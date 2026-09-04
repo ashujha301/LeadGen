@@ -1,0 +1,115 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_REGION: us-central1
+  GCP_ZONE: us-central1-a
+  ARTIFACT_REPOSITORY: leadgen-demo
+  APP_DIR: /run/leadgen-demo
+
+jobs:
+  deploy:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    environment: demo
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Set image coordinates
+        id: images
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          REGISTRY="${GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}"
+          echo "registry=${REGISTRY}" >> "$GITHUB_OUTPUT"
+          echo "web_image=${REGISTRY}/web:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "worker_image=${REGISTRY}/worker:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push web image
+        run: |
+          docker build \
+            -f infra/docker/Dockerfile.web \
+            -t "${{ steps.images.outputs.web_image }}" \
+            .
+          docker push "${{ steps.images.outputs.web_image }}"
+
+      - name: Build and push worker image
+        run: |
+          docker build \
+            -f infra/docker/Dockerfile.worker \
+            -t "${{ steps.images.outputs.worker_image }}" \
+            .
+          docker push "${{ steps.images.outputs.worker_image }}"
+
+      - name: Deploy over IAP SSH
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          INSTANCE_NAME: ${{ secrets.GCP_INSTANCE_NAME }}
+          IMAGE_TAG: ${{ steps.images.outputs.image_tag }}
+          REGISTRY: ${{ steps.images.outputs.registry }}
+        run: |
+          gcloud compute scp \
+            --project "${PROJECT_ID}" \
+            --zone "${GCP_ZONE}" \
+            --tunnel-through-iap \
+            infra/docker/compose.production.yml \
+            infra/docker/seccomp.json \
+            infra/scripts/load-secrets.sh \
+            infra/scripts/deploy.sh \
+            infra/scripts/rollback.sh \
+            "${INSTANCE_NAME}:${APP_DIR}/"
+
+          gcloud compute ssh "${INSTANCE_NAME}" \
+            --project "${PROJECT_ID}" \
+            --zone "${GCP_ZONE}" \
+            --tunnel-through-iap \
+            --command "set -euo pipefail
+              chmod +x ${APP_DIR}/load-secrets.sh ${APP_DIR}/deploy.sh ${APP_DIR}/rollback.sh
+              GCP_PROJECT_ID='${PROJECT_ID}' ${APP_DIR}/load-secrets.sh
+              REGISTRY='${REGISTRY}' IMAGE_TAG='${IMAGE_TAG}' ${APP_DIR}/deploy.sh"
+
+      - name: Roll back on failure
+        if: failure()
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          INSTANCE_NAME: ${{ secrets.GCP_INSTANCE_NAME }}
+          REGISTRY: ${{ steps.images.outputs.registry }}
+        run: |
+          gcloud compute ssh "${INSTANCE_NAME}" \
+            --project "${PROJECT_ID}" \
+            --zone "${GCP_ZONE}" \
+            --tunnel-through-iap \
+            --command "REGISTRY='${REGISTRY}' ${APP_DIR}/rollback.sh" || true

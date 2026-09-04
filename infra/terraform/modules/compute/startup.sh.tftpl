@@ -1,0 +1,61 @@
+#!/bin/bash
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y ca-certificates curl gnupg nginx
+
+if ! command -v docker >/dev/null 2>&1; then
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+fi
+
+mkdir -p /run/leadgen-demo
+chmod 700 /run/leadgen-demo
+touch /run/leadgen-demo/runtime.env
+chmod 600 /run/leadgen-demo/runtime.env
+echo "bootstrap" > /run/leadgen-demo/deployed.tag
+
+cat > /etc/nginx/sites-available/leadgen-demo.conf <<'NGINX'
+upstream leadgen_web {
+    server 127.0.0.1:3000;
+    keepalive 16;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    location / {
+        proxy_pass http://leadgen_web;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+}
+NGINX
+
+ln -sf /etc/nginx/sites-available/leadgen-demo.conf /etc/nginx/sites-enabled/leadgen-demo.conf
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+systemctl enable nginx
+systemctl restart nginx
+
+systemctl enable docker
+systemctl start docker
+
+gcloud auth configure-docker ${artifact_registry_host} --quiet || true
+
+echo "[startup] leadGen-demo VM bootstrap complete"

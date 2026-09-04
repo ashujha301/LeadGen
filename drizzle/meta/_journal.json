@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788524977751,
+      "tag": "0000_marvelous_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788524977752,
+      "tag": "0001_dynamic_discovery_refresh",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788524977753,
+      "tag": "0002_incremental_pipeline_resolver",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788524977754,
+      "tag": "0003_appknox_correctness",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788524977755,
+      "tag": "0004_pipeline_idempotency",
+      "breakpoints": true
+    }
+  ]
+}

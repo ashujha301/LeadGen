@@ -1,0 +1,18 @@
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+zone       = "us-central1-a"
+
+repository_owner   = "ashujha301"
+repository_name    = "LeadGen"
+allowed_branch_ref = "refs/heads/main"
+
+machine_type = "e2-small"
+disk_size_gb = 20
+
+artifact_repository_id           = "leadgen-demo"
+artifact_retention_count         = 20
+artifact_untagged_retention_days = 7
+
+labels = {
+  owner = "ashujha301"
+}

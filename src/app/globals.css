@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #121826;
+  --surface: #1e293b;
+  --surface-raised: #232b3e;
+  --foreground: #ffffff;
+  --muted: #9ca3af;
+  --accent: #14b8a6;
+  --accent-light: #2dd4bf;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  @apply bg-background text-white antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+@layer base {
+  * {
+    @apply border-[var(--border)];
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

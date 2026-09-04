@@ -1,0 +1,47 @@
+[
+  {
+    "matched_on": "appknox.com",
+    "match_type": "domain",
+    "matches": [
+      {
+        "confidence_score": 0.98,
+        "company_data": {
+          "crustdata_company_id": 1001,
+          "updated_at": "2025-08-15T10:00:00Z",
+          "basic_info": {
+            "name": "Appknox",
+            "primary_domain": "appknox.com",
+            "professional_network_url": "https://www.linkedin.com/company/appknox",
+            "description": "Mobile application security platform"
+          },
+          "headcount": { "total": 85 },
+          "taxonomy": {
+            "professional_network_industry": "Computer and Network Security"
+          },
+          "locations": {
+            "headquarters": "San Francisco, California, United States"
+          },
+          "people": {
+            "founders": [
+              {
+                "crustdata_person_id": 2001,
+                "name": "Harshit Agarwal",
+                "title": "Co-Founder & CEO",
+                "professional_network_profile_url": "https://www.linkedin.com/in/harshit-agarwal-appknox"
+              }
+            ],
+            "cxos": [
+              {
+                "crustdata_person_id": 2002,
+                "name": "Subho Halder",
+                "title": "Co-Founder & CISO",
+                "professional_network_profile_url": "https://www.linkedin.com/in/subhohalder"
+              }
+            ],
+            "decision_makers": []
+          }
+        }
+      }
+    ]
+  }
+]

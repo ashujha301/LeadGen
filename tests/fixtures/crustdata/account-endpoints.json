@@ -1,0 +1,28 @@
+{
+  "endpoints": [
+    {
+      "path": "/company/enrich",
+      "method": "POST",
+      "rate_limit": {
+        "requests_per_minute": 15,
+        "effective_requests_per_minute": 15
+      }
+    },
+    {
+      "path": "/person/search",
+      "method": "POST",
+      "rate_limit": {
+        "requests_per_minute": 30,
+        "effective_requests_per_minute": 30
+      }
+    },
+    {
+      "path": "/person/enrich",
+      "method": "POST",
+      "rate_limit": {
+        "requests_per_minute": 15,
+        "effective_requests_per_minute": 15
+      }
+    }
+  ]
+}

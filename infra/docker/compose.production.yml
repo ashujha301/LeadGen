@@ -1,0 +1,50 @@
+name: leadgen-demo
+
+services:
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}
+    container_name: leadgen-web
+    restart: unless-stopped
+    env_file:
+      - ${RUNTIME_ENV_FILE:-/run/leadgen-demo/runtime.env}
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    image: ${WORKER_IMAGE:?WORKER_IMAGE is required}
+    container_name: leadgen-worker
+    restart: unless-stopped
+    env_file:
+      - ${RUNTIME_ENV_FILE:-/run/leadgen-demo/runtime.env}
+    environment:
+      NODE_ENV: production
+      PLAYWRIGHT_HEADLESS: "true"
+      WORKER_CONCURRENCY: "1"
+    security_opt:
+      - seccomp=${SECCOMP_PATH:-/run/leadgen-demo/seccomp.json}
+    shm_size: "1gb"
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+  migrate:
+    profiles: ["migrate"]
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}
+    container_name: leadgen-migrate
+    env_file:
+      - ${RUNTIME_ENV_FILE:-/run/leadgen-demo/runtime.env}
+    entrypoint: ["node", "-e", "console.log('Migration placeholder: run drizzle-kit migrate from deploy host')"]
+    restart: "no"

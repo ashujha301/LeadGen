@@ -1,0 +1,53 @@
+[
+  {
+    "matched_on": "https://www.linkedin.com/in/harshit-agarwal-appknox",
+    "match_type": "professional_network_profile_url",
+    "match_status": "matched",
+    "matches": [
+      {
+        "confidence_score": 1,
+        "person_data": {
+          "crustdata_person_id": 2001,
+          "updated_at": "2025-08-20T14:30:00Z",
+          "basic_profile": {
+            "name": "Harshit Agarwal",
+            "headline": "Co-Founder & CEO at Appknox",
+            "location": "San Francisco Bay Area"
+          },
+          "social_handles": {
+            "professional_network_identifier": {
+              "profile_url": "https://www.linkedin.com/in/harshit-agarwal-appknox"
+            }
+          },
+          "experience": {
+            "years_of_experience_raw": 12,
+            "employment_details": {
+              "current": [
+                {
+                  "position_id": "emp-001",
+                  "name": "Appknox",
+                  "company_website_domain": "appknox.com",
+                  "title": "Co-Founder & CEO",
+                  "start_date": "2014-01-01",
+                  "end_date": null
+                }
+              ],
+              "past": [
+                {
+                  "position_id": "emp-002",
+                  "name": "Previous Startup Inc",
+                  "company_website_domain": null,
+                  "title": "Software Engineer",
+                  "start_date": "2010-06-01",
+                  "end_date": "2013-12-31"
+                }
+              ]
+            }
+          },
+          "education": { "schools": [{ "school": "IIT Delhi", "degree": "B.Tech" }] },
+          "skills": { "professional_network_skills": ["Cybersecurity", "Mobile Security", "Leadership"] }
+        }
+      }
+    ]
+  }
+]

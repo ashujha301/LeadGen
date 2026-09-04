@@ -1,0 +1,18 @@
+{
+  "profiles": [
+    {
+      "crustdata_person_id": 2003,
+      "basic_profile": {
+        "name": "Priya Sharma",
+        "current_title": "VP of Sales"
+      },
+      "social_handles": {
+        "professional_network_identifier": {
+          "profile_url": "https://www.linkedin.com/in/priyasharma-vp"
+        }
+      }
+    }
+  ],
+  "next_cursor": null,
+  "total_count": 1
+}

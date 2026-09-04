@@ -53,9 +53,21 @@ export async function scoreLeadsIncremental(
   if (
     shouldExcludeByEmployeeRange(company.employeeCount, run?.icp?.employeeRange)
   ) {
+    const range = run?.icp?.employeeRange;
+    const message = `Company headcount ${company.employeeCount} is outside employee filter ${range?.min ?? "…"}–${range?.max ?? "…"}; skipped lead creation`;
     await runsRepo.updateRunProgress(db, ctx.runId, {
       stage: "scoring",
       leadsScored: 0,
+    });
+    await runEventsRepo.createRunEvent(db, {
+      runId: ctx.runId,
+      eventType: "run.progress",
+      payload: {
+        stage: "scoring",
+        message,
+        employeeCount: company.employeeCount,
+        employeeRange: range,
+      },
     });
     return { leadsScored: 0 };
   }

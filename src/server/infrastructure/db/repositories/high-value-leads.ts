@@ -5,10 +5,8 @@ import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
 import type { Db } from "../client";
 import {
   companies,
-  contactPoints,
   leadCandidates,
   people,
-  personExternalProfiles,
   searchRuns,
   type Company,
   type LeadCandidate,
@@ -27,15 +25,17 @@ export type HighValueLeadRow = LeadCandidate & {
 };
 
 const hasLinkedinProfileFilter = or(
+  // Use unqualified inner-table names. Interpolating contactPoints.type inside a
+  // leadCandidates relational query makes Drizzle emit leadCandidates.type.
   sql`exists (
-    select 1 from ${contactPoints}
-    where ${contactPoints.personId} = ${leadCandidates.personId}
-    and ${contactPoints.type} = 'linkedin'
+    select 1 from contact_points
+    where contact_points.person_id = ${leadCandidates.personId}
+    and contact_points.type = 'linkedin'
   )`,
   sql`exists (
-    select 1 from ${personExternalProfiles}
-    where ${personExternalProfiles.personId} = ${leadCandidates.personId}
-    and ${personExternalProfiles.profileUrl} is not null
+    select 1 from person_external_profiles
+    where person_external_profiles.person_id = ${leadCandidates.personId}
+    and person_external_profiles.profile_url is not null
   )`,
 );
 

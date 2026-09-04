@@ -12,7 +12,7 @@ async function collectRepairReport(options: {
 }): Promise<RepairReport> {
   const db = getDb();
   let duplicateGroups = 0;
-  let suspiciousPeople = 0;
+  const suspiciousPeople = 0;
   let inconsistentRuns = 0;
 
   if (options.runId) {

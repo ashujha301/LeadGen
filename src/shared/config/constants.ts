@@ -35,8 +35,8 @@ export const SCORE_MAX_V2 = {
 } as const;
 
 export const HIGH_VALUE_LEAD_THRESHOLDS = {
-  minScore: 55,
-  minConfidence: 0.55,
+  minScore: 35,
+  minConfidence: 0.35,
   scoreVersion: 2,
 } as const;
 

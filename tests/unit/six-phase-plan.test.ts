@@ -61,16 +61,16 @@ describe("same-company name dedup", () => {
 });
 
 describe("lenient high value lead thresholds", () => {
-  it("uses 55 score and 0.55 confidence", () => {
-    expect(HIGH_VALUE_LEAD_THRESHOLDS.minScore).toBe(55);
-    expect(HIGH_VALUE_LEAD_THRESHOLDS.minConfidence).toBe(0.55);
+  it("uses 35 score and 0.35 confidence", () => {
+    expect(HIGH_VALUE_LEAD_THRESHOLDS.minScore).toBe(35);
+    expect(HIGH_VALUE_LEAD_THRESHOLDS.minConfidence).toBe(0.35);
     expect(
       qualifiesAsHighValueLead({
         scoreVersion: 2,
         roleMatchFinal: true,
         roleMatch: true,
-        finalScore: 56,
-        confidence: 0.56,
+        finalScore: 36,
+        confidence: 0.36,
         isStale: false,
         hasVerifiedCurrentEmployment: true,
       }),

@@ -1,6 +1,7 @@
 import { getEnv } from "@/shared/config/server";
 import { enrichPerson, isCrustdataEnabled } from "@/server/infrastructure/connectors";
 import { buildPersonEnrichSourceKey } from "@/server/domain/source-keys";
+import { profileIdentityKey } from "@/server/domain/entity-resolution/person-drafts";
 import { normalizeUrl } from "@/server/domain/normalization/url";
 import {
   connectorAttemptsRepo,
@@ -13,6 +14,7 @@ import {
 import { eq } from "drizzle-orm";
 
 import type { StageContext, StageResult } from "../jobs/process-run";
+import { assertRunNotCanceled, getRunAbortSignal } from "../run-abort";
 
 const MAX_ENRICH_PEOPLE = 25;
 
@@ -24,10 +26,11 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
     return { stage: "enriching", success: true, metrics: { personsEnriched: 0 } };
   }
 
+  await assertRunNotCanceled(ctx.runId);
   await runsRepo.updateRunStatus(db, ctx.runId, "enriching");
 
   const profileUrls: string[] = [];
-  const personByProfile = new Map<string, string>();
+  const personByProfileKey = new Map<string, string>();
 
   for (const personId of ctx.resolvedPersonIds.slice(0, MAX_ENRICH_PEOPLE)) {
     const contacts = await entitiesRepo.getContactPointsByPersonId(db, personId);
@@ -35,12 +38,12 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
     if (!linkedin?.rawValue) {
       continue;
     }
-    const normalized = normalizeUrl(linkedin.rawValue)?.toLowerCase() ?? linkedin.normalizedValue;
-    if (!normalized || profileUrls.includes(linkedin.rawValue)) {
+    const profileKey = profileIdentityKey(linkedin.rawValue);
+    if (!profileKey || profileUrls.includes(linkedin.rawValue)) {
       continue;
     }
     profileUrls.push(linkedin.rawValue);
-    personByProfile.set(linkedin.rawValue, personId);
+    personByProfileKey.set(profileKey, personId);
   }
 
   if (profileUrls.length === 0) {
@@ -48,9 +51,11 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
   }
 
   let personsEnriched = 0;
+  const enrichedPersonIds: string[] = [];
   const startedAt = Date.now();
   const result = await enrichPerson(profileUrls, {
     timeoutMs: env.CRUSTDATA_PEOPLE_TIMEOUT_MS,
+    signal: getRunAbortSignal(ctx.runId),
   });
 
   await connectorAttemptsRepo.createConnectorAttempt(db, {
@@ -73,7 +78,8 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
       continue;
     }
 
-    const personId = personByProfile.get(personResult.linkedinUrl);
+    const resultProfileKey = profileIdentityKey(personResult.linkedinUrl);
+    const personId = resultProfileKey ? personByProfileKey.get(resultProfileKey) : undefined;
     if (!personId) {
       continue;
     }
@@ -137,7 +143,10 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
     }
 
     personsEnriched += 1;
+    enrichedPersonIds.push(personId);
   }
+
+  ctx.enrichedPersonIds = enrichedPersonIds;
 
   return {
     stage: "enriching",

@@ -35,6 +35,39 @@ function extractJsonLdBlocks(html: string): unknown[] {
   return blocks;
 }
 
+function extractOrganizationNameFromJsonLd(value: unknown): string | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const nested = extractOrganizationNameFromJsonLd(entry);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const type = record["@type"];
+  const types = Array.isArray(type) ? type.map(String) : type != null ? [String(type)] : [];
+  const isOrg = types.some((entry) =>
+    /^(Organization|Corporation|LocalBusiness|WebSite)$/i.test(entry),
+  );
+
+  if (isOrg && typeof record.name === "string" && record.name.trim()) {
+    return record.name.trim();
+  }
+
+  if (record["@graph"]) {
+    return extractOrganizationNameFromJsonLd(record["@graph"]);
+  }
+
+  return null;
+}
+
 function extractEmails(html: string): string[] {
   const pattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
   const matches = html.match(pattern) ?? [];
@@ -174,6 +207,20 @@ export function mapCompanyPageToObservations(page: CompanyPageFetchResult): Mapp
       rawValue: JSON.stringify(jsonLdBlocks),
       confidence: 0.75,
     });
+
+    for (const block of jsonLdBlocks) {
+      const orgName = extractOrganizationNameFromJsonLd(block);
+      if (orgName) {
+        observations.push({
+          entityType: "company",
+          attribute: "name",
+          rawValue: orgName,
+          normalizedValue: orgName.toLowerCase(),
+          confidence: 0.85,
+        });
+        break;
+      }
+    }
   }
 
   observations.push({

@@ -1,5 +1,6 @@
 import { explainLead } from "@/server/infrastructure/ai";
 import { matchTitleAgainstRoleCriteria } from "@/server/domain/roles/matching";
+import { hasEmployeeRangeBounds } from "@/server/domain/employee-range";
 import { getDb, entitiesRepo, leadsRepo, runsRepo, sourcesRepo } from "@/server/infrastructure/db";
 import { scoreLead } from "@/server/domain/scoring";
 import { SCORE_COMPONENT_KEYS } from "@/server/domain/scoring/score-config";
@@ -52,13 +53,12 @@ export async function scoreLeads(ctx: StageContext): Promise<StageResult> {
       icp: {
         targetIndustries: run?.icp?.industries,
         targetLocations: run?.icp?.locations,
-        employeeRange:
-          run?.icp?.employeeRange?.min != null && run?.icp?.employeeRange?.max != null
-            ? {
-                min: run.icp.employeeRange.min,
-                max: run.icp.employeeRange.max,
-              }
-            : undefined,
+        employeeRange: hasEmployeeRangeBounds(run?.icp?.employeeRange)
+          ? {
+              min: run?.icp?.employeeRange?.min,
+              max: run?.icp?.employeeRange?.max,
+            }
+          : undefined,
         companyIndustry: company.industry,
         companyLocation: company.location,
         employeeCount: company.employeeCount,

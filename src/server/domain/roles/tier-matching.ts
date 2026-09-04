@@ -113,6 +113,8 @@ export function matchRoleWithTier(
   };
 }
 
+import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
+
 export function qualifiesAsHighValueLead(input: {
   scoreVersion: number;
   roleMatchFinal: boolean;
@@ -123,11 +125,11 @@ export function qualifiesAsHighValueLead(input: {
   hasVerifiedCurrentEmployment: boolean;
 }): boolean {
   return (
-    input.scoreVersion >= 2 &&
+    input.scoreVersion >= HIGH_VALUE_LEAD_THRESHOLDS.scoreVersion &&
     input.roleMatchFinal &&
     input.roleMatch &&
-    input.finalScore >= 70 &&
-    input.confidence >= 0.75 &&
+    input.finalScore >= HIGH_VALUE_LEAD_THRESHOLDS.minScore &&
+    input.confidence >= HIGH_VALUE_LEAD_THRESHOLDS.minConfidence &&
     !input.isStale &&
     input.hasVerifiedCurrentEmployment
   );

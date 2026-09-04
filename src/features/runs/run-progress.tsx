@@ -24,17 +24,18 @@ const STAGE_LABELS: Record<RunStatus, string> = {
   scoring: "Scoring leads",
   completed: "Completed",
   failed: "Failed",
+  canceled: "Canceled",
 };
 
 function stageIndex(status: RunStatus): number {
-  if (status === "failed") return -1;
+  if (status === "failed" || status === "canceled") return -1;
   const idx = STAGES.indexOf(status);
   return idx >= 0 ? idx : 0;
 }
 
 function progressPercent(status: RunStatus): number {
   if (status === "completed") return 100;
-  if (status === "failed") return 0;
+  if (status === "failed" || status === "canceled") return 0;
   const idx = stageIndex(status);
   return Math.round((idx / (STAGES.length - 1)) * 100);
 }
@@ -56,6 +57,8 @@ export function RunProgressPanel({ status, progress, error, elapsedMs }: RunProg
         <div className="flex items-center gap-2">
           {status === "failed" ? (
             <XCircle className="h-5 w-5 text-red-400" />
+          ) : status === "canceled" ? (
+            <XCircle className="h-5 w-5 text-muted" />
           ) : status === "completed" ? (
             <CheckCircle2 className="h-5 w-5 text-green-400" />
           ) : (

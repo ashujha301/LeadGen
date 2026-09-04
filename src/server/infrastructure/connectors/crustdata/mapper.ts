@@ -1,7 +1,6 @@
 import type {
   CrustdataCompanyData,
   CrustdataPersonData,
-  CrustdataPersonRef,
   CrustdataSearchProfile,
 } from "./schemas";
 import type {
@@ -9,6 +8,7 @@ import type {
   CrustdataPeopleSearchResult,
   CrustdataPersonEnrichResult,
   CrustdataPersonExperience,
+  CrustdataPersonRef,
   CrustdataPersonResult,
   MappedObservation,
 } from "../types";
@@ -16,7 +16,7 @@ import type {
 function coercePersonRef(
   person: {
     crustdata_person_id?: string;
-    name: string;
+    name?: string;
     title?: string | null;
     professional_network_profile_url?: string | null;
     email?: string | null;
@@ -25,12 +25,18 @@ function coercePersonRef(
 ): CrustdataPersonRef {
   return {
     crustdata_person_id: person.crustdata_person_id,
-    name: person.name,
+    name: (person.name ?? "").trim(),
     title: person.title ?? null,
     professional_network_profile_url: person.professional_network_profile_url ?? null,
     email: person.email ?? null,
     match_score: person.match_score,
   };
+}
+
+function filterNamedPeople<T extends { name?: string | null }>(
+  people: T[],
+): Array<T & { name: string }> {
+  return people.filter((person): person is T & { name: string } => Boolean(person.name?.trim()));
 }
 
 export function mapCompanyDataToResult(
@@ -49,9 +55,11 @@ export function mapCompanyDataToResult(
     description: data.basic_info?.description ?? null,
     matchScore: matchScore ?? null,
     providerUpdatedAt: data.updated_at ?? null,
-    founders: (data.people?.founders ?? []).map((person) => coercePersonRef(person)),
-    cxos: (data.people?.cxos ?? []).map((person) => coercePersonRef(person)),
-    decisionMakers: (data.people?.decision_makers ?? []).map((person) => coercePersonRef(person)),
+    founders: filterNamedPeople(data.people?.founders ?? []).map((person) => coercePersonRef(person)),
+    cxos: filterNamedPeople(data.people?.cxos ?? []).map((person) => coercePersonRef(person)),
+    decisionMakers: filterNamedPeople(data.people?.decision_makers ?? []).map((person) =>
+      coercePersonRef(person),
+    ),
     raw: data,
   };
 }
@@ -130,7 +138,7 @@ export function mapPersonDataToEnrichResult(
 export function mapPersonRefToResult(person: CrustdataPersonRef): CrustdataPersonResult {
   return {
     crustdataPersonId: person.crustdata_person_id ?? null,
-    name: person.name,
+    name: person.name ?? "",
     title: person.title ?? null,
     email: person.email ?? null,
     linkedinUrl: person.professional_network_profile_url ?? null,

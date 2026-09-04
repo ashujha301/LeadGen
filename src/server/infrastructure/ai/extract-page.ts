@@ -15,6 +15,7 @@ export type ExtractPageInput = {
   cleanedText: string;
   runId?: string;
   db?: Db;
+  signal?: AbortSignal;
 };
 
 export type ExtractPageResult =
@@ -36,6 +37,7 @@ export async function extractPage(input: ExtractPageInput): Promise<ExtractPageR
     prompt,
     runId: input.runId,
     db: input.db,
+    signal: input.signal,
   });
 
   if (result.status !== "success") {

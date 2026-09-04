@@ -9,6 +9,7 @@ export const runStatusEnum = pgEnum("run_status", [
   "scoring",
   "completed",
   "failed",
+  "canceled",
 ]);
 
 export const sourceTypeEnum = pgEnum("source_type", [
@@ -90,4 +91,5 @@ export const runEventTypeEnum = pgEnum("run_event_type", [
   "lead.merged",
   "run.completed",
   "run.failed",
+  "run.canceled",
 ]);

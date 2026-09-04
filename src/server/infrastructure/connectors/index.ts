@@ -23,6 +23,7 @@ export {
   enrichPerson,
   isCrustdataEnabled,
   searchPeopleByCompany,
+  searchPersonByNameAndCompany,
   buildTitleConditions,
   escapeTitleCondition,
   initializeCrustdataLimiters,

@@ -5,6 +5,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -49,7 +50,7 @@ export const observations = pgTable(
       table.resolvedEntityType,
       table.resolvedEntityId,
     ),
-    index("observations_source_document_fingerprint_idx").on(
+    uniqueIndex("observations_source_document_fingerprint_idx").on(
       table.sourceDocumentId,
       table.fingerprint,
     ),

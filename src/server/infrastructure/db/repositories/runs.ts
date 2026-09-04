@@ -2,6 +2,7 @@ import type { IcpFilter, RunProgress, RunStatus } from "@/shared/contracts";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 
 import type { Db } from "../client";
+import { isUniqueViolation } from "../errors";
 import {
   searchRuns,
   type NewSearchRun,
@@ -58,11 +59,22 @@ export async function createRun(db: Db, input: CreateRunInput): Promise<SearchRu
     status: "queued",
   };
 
-  const [run] = await db.insert(searchRuns).values(values).returning();
-  if (!run) {
-    throw new Error("Failed to create search run");
+  try {
+    const [run] = await db.insert(searchRuns).values(values).returning();
+    if (!run) {
+      throw new Error("Failed to create search run");
+    }
+    return run;
+  } catch (error) {
+    if (!isUniqueViolation(error, "search_runs_idempotency_key_idx")) {
+      throw error;
+    }
+    const existing = await getRunByIdempotencyKey(db, input.idempotencyKey);
+    if (existing) {
+      return existing;
+    }
+    throw error;
   }
-  return run;
 }
 
 export async function getRunById(db: Db, runId: string): Promise<SearchRun | undefined> {
@@ -223,6 +235,32 @@ export async function failRunIfActive(
     .where(and(eq(searchRuns.id, runId), inArray(searchRuns.status, ACTIVE_STATUSES)))
     .returning();
   return run;
+}
+
+export async function cancelRunIfActive(
+  db: Db,
+  runId: string,
+): Promise<SearchRun | undefined> {
+  const [run] = await db
+    .update(searchRuns)
+    .set({
+      status: "canceled",
+      completedAt: new Date(),
+      errorCode: "RUN_CANCELED",
+      errorMessage: "Run canceled by user",
+      errorRecoverable: false,
+      progress: {
+        stage: "canceled",
+      },
+    })
+    .where(and(eq(searchRuns.id, runId), inArray(searchRuns.status, ACTIVE_STATUSES)))
+    .returning();
+  return run;
+}
+
+export async function isRunCanceled(db: Db, runId: string): Promise<boolean> {
+  const run = await getRunById(db, runId);
+  return run?.status === "canceled";
 }
 
 export async function failRun(

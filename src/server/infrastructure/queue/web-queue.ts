@@ -24,7 +24,18 @@ async function getQueue(): Promise<PgBoss> {
 
 export async function enqueueRun(runId: string): Promise<string | null> {
   const queue = await getQueue();
-  return queue.send(QUEUE_NAME, { runId });
+  return queue.send(QUEUE_NAME, { runId }, { singletonKey: runId });
+}
+
+export async function cancelQueuedRun(runId: string): Promise<void> {
+  try {
+    const queue = await getQueue();
+    // Best-effort: cooperative DB cancel is the source of truth. Job id may
+    // differ from runId; singleton jobs are skipped once status is canceled.
+    await queue.cancel(QUEUE_NAME, runId).catch(() => undefined);
+  } catch {
+    // Ignore queue cancel failures; worker will observe canceled status.
+  }
 }
 
 export { QUEUE_NAME };

@@ -30,11 +30,27 @@ export async function getOrCreateRequestLimit(
     activeRunCount: 0,
   };
 
-  const [created] = await db.insert(requestLimits).values(values).returning();
-  if (!created) {
+  const [created] = await db
+    .insert(requestLimits)
+    .values(values)
+    .onConflictDoNothing({
+      target: [requestLimits.hashedIp, requestLimits.quotaWindowStart],
+    })
+    .returning();
+  if (created) {
+    return created;
+  }
+
+  const raced = await db.query.requestLimits.findFirst({
+    where: and(
+      eq(requestLimits.hashedIp, hashedIp),
+      eq(requestLimits.quotaWindowStart, quotaWindowStart),
+    ),
+  });
+  if (!raced) {
     throw new Error("Failed to create request limit record");
   }
-  return created;
+  return raced;
 }
 
 export async function incrementRunCount(

@@ -12,6 +12,7 @@ export const runStatusSchema = z.enum([
   "scoring",
   "completed",
   "failed",
+  "canceled",
 ]);
 
 export type RunStatus = z.infer<typeof runStatusSchema>;

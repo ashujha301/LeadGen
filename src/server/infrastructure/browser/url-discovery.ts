@@ -31,6 +31,15 @@ const PROFILE_PATH_PATTERNS = [
   /^\/company\/[^/]+\/people/i,
 ];
 
+const LINKEDIN_COMPANY_PROFILE_PATTERN = /^\/company\/[^/]+\/?$/i;
+
+const LOW_VALUE_CONTENT_PATH_PATTERN =
+  /\/(blog|resources|news|webinar|careers|press)(\/|$|\?)/i;
+
+export function isLowValueContentPath(pathname: string): boolean {
+  return LOW_VALUE_CONTENT_PATH_PATTERN.test(pathname);
+}
+
 export type DiscoveredLink = {
   href: string;
   anchorText: string;
@@ -86,6 +95,10 @@ export function classifyDiscoveredLink(
   anchorText: string,
   navContext?: string,
 ): LinkPriority {
+  if (isLowValueContentPath(pathname)) {
+    return 4;
+  }
+
   const combined = `${pathname} ${anchorText} ${navContext ?? ""}`.toLowerCase();
 
   if (SKIP_KEYWORDS.test(combined) || PAGINATION_PATTERN.test(combined)) {
@@ -127,6 +140,10 @@ export function shouldSkipDiscoveredUrl(url: string): boolean {
       return true;
     }
 
+    if (isLowValueContentPath(parsed.pathname)) {
+      return true;
+    }
+
     if (parsed.pathname.includes("/download") || parsed.searchParams.has("download")) {
       return true;
     }
@@ -141,6 +158,19 @@ export function shouldSkipDiscoveredUrl(url: string): boolean {
   }
 }
 
+export function isLinkedInCompanyProfileUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (!/linkedin\.com$/i.test(host)) {
+      return false;
+    }
+    return LINKEDIN_COMPANY_PROFILE_PATTERN.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export function isExternalProfileUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -151,6 +181,9 @@ export function isExternalProfileUrl(url: string): boolean {
     }
 
     if (/linkedin\.com$/i.test(host)) {
+      if (isLinkedInCompanyProfileUrl(url)) {
+        return true;
+      }
       return PROFILE_PATH_PATTERNS.some((pattern) => pattern.test(parsed.pathname));
     }
 

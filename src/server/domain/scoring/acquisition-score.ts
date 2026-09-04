@@ -4,11 +4,16 @@ import {
   SCORE_COMPONENT_LABELS,
   getScoreComponentMax,
 } from "./score-config";
+import {
+  hasEmployeeRangeBounds,
+  isEmployeeCountInRange,
+  type EmployeeRangeBounds,
+} from "@/server/domain/employee-range";
 
 export type IcpFitInput = {
   targetIndustries?: string[];
   targetLocations?: string[];
-  employeeRange?: { min: number; max: number };
+  employeeRange?: EmployeeRangeBounds;
   companyIndustry?: string | null;
   companyLocation?: string | null;
   employeeCount?: number | null;
@@ -27,10 +32,6 @@ function normalizeText(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function inEmployeeRange(count: number, range: { min: number; max: number }): boolean {
-  return count >= range.min && count <= range.max;
-}
-
 /**
  * Company ICP fit scoring (max 20): industry, location, and employee range alignment.
  */
@@ -42,7 +43,9 @@ export function scoreCompanyIcpFit(input: IcpFitInput, scoreVersion = 1): ScoreC
   const industryTargets = (input.targetIndustries ?? []).map(normalizeText);
   const locationTargets = (input.targetLocations ?? []).map(normalizeText);
   const hasIcpFilters =
-    industryTargets.length > 0 || locationTargets.length > 0 || input.employeeRange !== undefined;
+    industryTargets.length > 0 ||
+    locationTargets.length > 0 ||
+    hasEmployeeRangeBounds(input.employeeRange);
 
   if (!hasIcpFilters) {
     rawValue = max * 0.5;
@@ -77,9 +80,12 @@ export function scoreCompanyIcpFit(input: IcpFitInput, scoreVersion = 1): ScoreC
       }
     }
 
-    if (input.employeeRange) {
+    if (hasEmployeeRangeBounds(input.employeeRange)) {
       checks += 1;
-      if (input.employeeCount != null && inEmployeeRange(input.employeeCount, input.employeeRange)) {
+      if (
+        input.employeeCount != null &&
+        isEmployeeCountInRange(input.employeeCount, input.employeeRange!)
+      ) {
         matches += 1;
       }
     }

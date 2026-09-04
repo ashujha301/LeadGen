@@ -1,12 +1,14 @@
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 
 import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
 
 import type { Db } from "../client";
 import {
   companies,
+  contactPoints,
   leadCandidates,
   people,
+  personExternalProfiles,
   searchRuns,
   type Company,
   type LeadCandidate,
@@ -24,6 +26,19 @@ export type HighValueLeadRow = LeadCandidate & {
   company: typeof companies.$inferSelect;
 };
 
+const hasLinkedinProfileFilter = or(
+  sql`exists (
+    select 1 from ${contactPoints}
+    where ${contactPoints.personId} = ${leadCandidates.personId}
+    and ${contactPoints.type} = 'linkedin'
+  )`,
+  sql`exists (
+    select 1 from ${personExternalProfiles}
+    where ${personExternalProfiles.personId} = ${leadCandidates.personId}
+    and ${personExternalProfiles.profileUrl} is not null
+  )`,
+);
+
 const qualificationFilter = and(
   eq(leadCandidates.scoreVersion, HIGH_VALUE_LEAD_THRESHOLDS.scoreVersion),
   eq(leadCandidates.roleMatchFinal, true),
@@ -31,6 +46,7 @@ const qualificationFilter = and(
   sql`${leadCandidates.finalScore} >= ${HIGH_VALUE_LEAD_THRESHOLDS.minScore}`,
   sql`${leadCandidates.confidence} >= ${HIGH_VALUE_LEAD_THRESHOLDS.minConfidence}`,
   eq(leadCandidates.isStale, false),
+  hasLinkedinProfileFilter,
 );
 
 export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySummary[]> {
@@ -57,7 +73,7 @@ export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySu
     .select({ normalizedDomain: searchRuns.normalizedDomain })
     .from(searchRuns)
     .where(
-      sql`${searchRuns.status} NOT IN ('completed', 'failed')`,
+      sql`${searchRuns.status} NOT IN ('completed', 'failed', 'canceled')`,
     );
 
   const activeDomains = new Set(activeRuns.map((row) => row.normalizedDomain));

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { resolveCanonicalIndustry } from "@/server/domain/industry/resolution";
 import { validatePersonMention } from "@/server/domain/entity-resolution/mention-validation";
+import { findExistingPersonByNameAtCompany } from "@/server/domain/entity-resolution/person-drafts";
+import { shouldExcludeByEmployeeRange } from "@/server/domain/employee-range";
 import { matchRoleWithTier, qualifiesAsHighValueLead } from "@/server/domain/roles/tier-matching";
 import { calculateExperienceMetrics } from "@/server/domain/timeline/experience-calculation";
 import { scoreLead, TOTAL_SCORE_MAX_V2 } from "@/server/domain/scoring";
 import { pickCompanyName } from "@/server/worker/stages/resolve";
+import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
 
 describe("incremental pipeline domain modules", () => {
   it("derives a clean company name instead of storing the full page title", () => {
@@ -125,8 +128,8 @@ describe("incremental pipeline domain modules", () => {
         scoreVersion: 2,
         roleMatchFinal: true,
         roleMatch: true,
-        finalScore: 75,
-        confidence: 0.8,
+        finalScore: HIGH_VALUE_LEAD_THRESHOLDS.minScore,
+        confidence: HIGH_VALUE_LEAD_THRESHOLDS.minConfidence,
         isStale: false,
         hasVerifiedCurrentEmployment: true,
       }),
@@ -143,5 +146,20 @@ describe("incremental pipeline domain modules", () => {
         hasVerifiedCurrentEmployment: true,
       }),
     ).toBe(false);
+  });
+
+  it("merges people at the same company when names are highly similar", () => {
+    expect(
+      findExistingPersonByNameAtCompany(
+        { normalizedName: "jane oneil" },
+        [{ id: "p1", normalizedName: "jane o'neil" }],
+      ),
+    ).toBe("p1");
+  });
+
+  it("skips scoring when employee count is outside configured ICP range", () => {
+    expect(shouldExcludeByEmployeeRange(1200, { min: 10, max: 500 })).toBe(true);
+    expect(shouldExcludeByEmployeeRange(120, { min: 10, max: 500 })).toBe(false);
+    expect(shouldExcludeByEmployeeRange(null, { min: 10, max: 500 })).toBe(false);
   });
 });

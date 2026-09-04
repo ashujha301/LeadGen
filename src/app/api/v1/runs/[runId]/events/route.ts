@@ -7,7 +7,7 @@ import { getDb, runEventsRepo, runsRepo } from "@/server/infrastructure/db";
 
 const HEARTBEAT_MS = 15_000;
 const POLL_MS = 1_000;
-const TERMINAL_EVENTS = new Set(["run.completed", "run.failed"]);
+const TERMINAL_EVENTS = new Set(["run.completed", "run.failed", "run.canceled"]);
 
 export const GET = withRequestGuard(async (request, requestId, clientKey) => {
   const limit = checkReadApiLimit(clientKey);
@@ -91,7 +91,11 @@ export const GET = withRequestGuard(async (request, requestId, clientKey) => {
             }
           }
 
-          if (run && (run.status === "completed" || run.status === "failed") && events.length === 0) {
+          if (
+            run &&
+            (run.status === "completed" || run.status === "failed" || run.status === "canceled") &&
+            events.length === 0
+          ) {
             closeStream();
             return;
           }

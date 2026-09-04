@@ -1,9 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { matchRoleWithTier } from "@/server/domain/roles/tier-matching";
 import { scoreLead } from "@/server/domain/scoring";
 import { SCORE_COMPONENT_KEYS } from "@/server/domain/scoring/score-config";
+import { shouldExcludeByEmployeeRange, hasEmployeeRangeBounds } from "@/server/domain/employee-range";
 import {
+  contactPoints,
   getDb,
   entitiesRepo,
   leadCandidates,
@@ -23,6 +25,7 @@ type ScoreLeadsIncrementalOptions = {
   scoreVersion?: number;
   emitEvents?: boolean;
   updateExisting?: boolean;
+  personIds?: string[];
 };
 
 export async function scoreLeadsIncremental(
@@ -47,28 +50,85 @@ export async function scoreLeadsIncremental(
 
   ctx.companyId = company.id;
 
+  if (
+    shouldExcludeByEmployeeRange(company.employeeCount, run?.icp?.employeeRange)
+  ) {
+    await runsRepo.updateRunProgress(db, ctx.runId, {
+      stage: "scoring",
+      leadsScored: 0,
+    });
+    return { leadsScored: 0 };
+  }
+
   const employments = await entitiesRepo.getEmploymentsByCompanyId(db, company.id);
-  const targetPersonIds = ctx.resolvedPersonIds?.length
-    ? new Set(ctx.resolvedPersonIds)
-    : null;
+  const targetPersonIds = options.personIds?.length
+    ? new Set(options.personIds)
+    : ctx.resolvedPersonIds?.length
+      ? new Set(ctx.resolvedPersonIds)
+      : null;
   const signals = await entitiesRepo.getBusinessSignalsByCompanyId(db, company.id);
   const documents = await sourcesRepo.getSourceDocumentsByRunId(db, ctx.runId);
   let leadsScored = 0;
 
-  const tierResults = employments.map((employment) =>
+  const filteredEmployments = employments.filter(
+    (employment) => !targetPersonIds || targetPersonIds.has(employment.personId),
+  );
+  const personIds = filteredEmployments.map((employment) => employment.personId);
+
+  const [contactRows, externalProfileRows, experienceRows] = await Promise.all([
+    personIds.length > 0
+      ? db.select().from(contactPoints).where(inArray(contactPoints.personId, personIds))
+      : Promise.resolve([]),
+    personIds.length > 0
+      ? db
+          .select()
+          .from(personExternalProfiles)
+          .where(inArray(personExternalProfiles.personId, personIds))
+      : Promise.resolve([]),
+    personIds.length > 0
+      ? db
+          .select()
+          .from(personExperienceMetrics)
+          .where(inArray(personExperienceMetrics.personId, personIds))
+      : Promise.resolve([]),
+  ]);
+
+  const contactsByPersonId = new Map<string, typeof contactRows>();
+  for (const contact of contactRows) {
+    if (!contact.personId) {
+      continue;
+    }
+    const existing = contactsByPersonId.get(contact.personId) ?? [];
+    existing.push(contact);
+    contactsByPersonId.set(contact.personId, existing);
+  }
+
+  const externalProfileByPersonId = new Map(
+    externalProfileRows.map((profile) => [profile.personId, profile]),
+  );
+  const experienceByPersonId = new Map(
+    experienceRows.map((metrics) => [metrics.personId, metrics]),
+  );
+
+  const tierResults = filteredEmployments.map((employment) =>
     matchRoleWithTier(employment.rawTitle, run?.roleCriteria),
   );
   const hasExactOrSynonymPeer = tierResults.some(
     (result) => result.roleMatchTier === "exact" || result.roleMatchTier === "synonym",
   );
 
-  for (const [index, employment] of employments.entries()) {
-    if (targetPersonIds && !targetPersonIds.has(employment.personId)) {
+  for (const [index, employment] of filteredEmployments.entries()) {
+    const person = await entitiesRepo.getPersonById(db, employment.personId);
+    if (!person) {
       continue;
     }
 
-    const person = await entitiesRepo.getPersonById(db, employment.personId);
-    if (!person) {
+    const contacts = contactsByPersonId.get(person.id) ?? [];
+    const linkedin = contacts.find((contact) => contact.type === "linkedin");
+    const externalProfile = externalProfileByPersonId.get(person.id);
+    const hasLinkedin = Boolean(linkedin?.rawValue || externalProfile?.profileUrl);
+
+    if (!hasLinkedin) {
       continue;
     }
 
@@ -88,8 +148,6 @@ export async function scoreLeadsIncremental(
       continue;
     }
 
-    const contacts = await entitiesRepo.getContactPointsByPersonId(db, person.id);
-    const linkedin = contacts.find((contact) => contact.type === "linkedin");
     const evidence = documents
       .filter((doc) => doc.excerpt)
       .slice(0, 3)
@@ -103,24 +161,19 @@ export async function scoreLeadsIncremental(
       hasExactOrSynonymPeer,
     });
 
-    const [experienceMetrics] = await db
-      .select()
-      .from(personExperienceMetrics)
-      .where(eq(personExperienceMetrics.personId, person.id))
-      .limit(1);
+    const experienceMetrics = experienceByPersonId.get(person.id);
 
     const score = scoreLead({
       scoreVersion,
       icp: {
         targetIndustries: run?.icp?.industries,
         targetLocations: run?.icp?.locations,
-        employeeRange:
-          run?.icp?.employeeRange?.min != null && run?.icp?.employeeRange?.max != null
-            ? {
-                min: run.icp.employeeRange.min,
-                max: run.icp.employeeRange.max,
-              }
-            : undefined,
+        employeeRange: hasEmployeeRangeBounds(run?.icp?.employeeRange)
+          ? {
+              min: run?.icp?.employeeRange?.min,
+              max: run?.icp?.employeeRange?.max,
+            }
+          : undefined,
         companyIndustry: company.industry,
         companyLocation: company.location,
         employeeCount: company.employeeCount,
@@ -188,7 +241,9 @@ export async function scoreLeadsIncremental(
       ? existingLead?.enrichmentStatus === "matched"
         ? "matched"
         : "pending"
-      : "not_found";
+      : externalProfile
+        ? "pending"
+        : "not_found";
 
     const leadInput = {
       icpFitScore: String(icpFitTotal),
@@ -253,10 +308,6 @@ export async function scoreLeadsIncremental(
     );
 
     if (emitEvents) {
-      const externalProfile = await db.query.personExternalProfiles.findFirst({
-        where: eq(personExternalProfiles.personId, person.id),
-      });
-
       const summary = buildLeadSummary({
         lead,
         person,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { getTableConfig } from "drizzle-orm/pg-core";
 
 import { buildObservationFingerprint } from "@/server/domain/observation-fingerprint";
+import { observations } from "@/server/infrastructure/db/schema/observations";
 import {
   buildCompanyEnrichSourceKey,
   buildPersonEnrichSourceKey,
@@ -31,6 +33,23 @@ describe("source keys", () => {
     const second = hashRoleCriteria({ customTitles: ["CEO"] });
     expect(first).toBe(second);
     expect(first).toHaveLength(16);
+  });
+});
+
+describe("observation fingerprint unique index", () => {
+  it("defines a non-partial unique index matching ON CONFLICT (source_document_id, fingerprint)", () => {
+    const { indexes } = getTableConfig(observations);
+    const fingerprintIndex = indexes.find(
+      (index) => index.config.name === "observations_source_document_fingerprint_idx",
+    );
+
+    expect(fingerprintIndex).toBeDefined();
+    expect(fingerprintIndex?.config.unique).toBe(true);
+    expect(fingerprintIndex?.config.where).toBeUndefined();
+    expect(fingerprintIndex?.config.columns.map((column) => column.name)).toEqual([
+      "source_document_id",
+      "fingerprint",
+    ]);
   });
 });
 

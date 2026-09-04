@@ -16,7 +16,7 @@ import { EmptyState } from "@/features/shell/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const TERMINAL_STATUSES = new Set(["completed", "failed"]);
+const TERMINAL_STATUSES = new Set(["completed", "failed", "canceled"]);
 const POLL_MS = 3000;
 const SSE_RECONNECT_MS = 5_000;
 
@@ -50,6 +50,20 @@ export function RunDetailClient({ runId }: RunDetailClientProps) {
   const sseFailuresRef = useRef(0);
   const seenEventSequencesRef = useRef<Set<string>>(new Set());
   const terminalReconciledRef = useRef(false);
+  const [canceling, setCanceling] = useState(false);
+
+  const handleCancel = useCallback(async () => {
+    setCanceling(true);
+    try {
+      const updated = await apiClient.cancelRun(runId);
+      setRun(updated);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to cancel run");
+    } finally {
+      setCanceling(false);
+    }
+  }, [runId]);
 
   const fetchRun = useCallback(async () => {
     try {
@@ -211,6 +225,11 @@ export function RunDetailClient({ runId }: RunDetailClientProps) {
           <h1 className="text-xl font-semibold">{formatDomain(run.normalizedDomain)}</h1>
           <p className="text-sm text-muted">Run {run.id.slice(0, 8)}…</p>
         </div>
+        {isActive && (
+          <Button variant="outline" size="sm" disabled={canceling} onClick={handleCancel}>
+            {canceling ? "Canceling…" : "Cancel search"}
+          </Button>
+        )}
         {isComplete && <ExportButton runId={runId} disabled={leads.length === 0} />}
       </header>
 
@@ -283,6 +302,13 @@ export function RunDetailClient({ runId }: RunDetailClientProps) {
             </Tabs>
           </section>
         </>
+      )}
+
+      {run.status === "canceled" && (
+        <EmptyState
+          title="Run canceled"
+          description="This search was stopped before completion."
+        />
       )}
 
       {run.status === "failed" && (

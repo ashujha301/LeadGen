@@ -26,6 +26,7 @@ export const sourceDocuments = pgTable(
     responseStatus: integer("response_status"),
     contentHash: text("content_hash"),
     excerpt: text("excerpt"),
+    pageHtml: text("page_html"),
     fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: "date" }),
     extractionStatus: extractionStatusEnum("extraction_status")
       .notNull()

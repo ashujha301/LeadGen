@@ -1,10 +1,12 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 
 import type { Db } from "../client";
 import {
   companies,
+  contactPoints,
   leadCandidates,
   people,
+  personExternalProfiles,
   scoreComponents,
   type LeadCandidate,
   type NewLeadCandidate,
@@ -20,11 +22,52 @@ export type LeadWithRelations = LeadCandidate & {
 
 export type LeadsScope = "matched" | "all";
 
+function hasLinkedinProfileFilter() {
+  return or(
+    sql`exists (
+      select 1 from ${contactPoints}
+      where ${contactPoints.personId} = ${leadCandidates.personId}
+      and ${contactPoints.type} = 'linkedin'
+    )`,
+    sql`exists (
+      select 1 from ${personExternalProfiles}
+      where ${personExternalProfiles.personId} = ${leadCandidates.personId}
+      and ${personExternalProfiles.profileUrl} is not null
+    )`,
+  );
+}
+
 export async function createLeadCandidate(
   db: Db,
   input: NewLeadCandidate,
 ): Promise<LeadCandidate> {
-  const [lead] = await db.insert(leadCandidates).values(input).returning();
+  const [lead] = await db
+    .insert(leadCandidates)
+    .values(input)
+    .onConflictDoUpdate({
+      target: [leadCandidates.runId, leadCandidates.personId, leadCandidates.companyId],
+      set: {
+        icpFitScore: input.icpFitScore,
+        decisionAuthorityScore: input.decisionAuthorityScore,
+        businessSignalsScore: input.businessSignalsScore,
+        contactabilityScore: input.contactabilityScore,
+        evidenceQualityScore: input.evidenceQualityScore,
+        finalScore: input.finalScore,
+        contactability: input.contactability,
+        confidence: input.confidence,
+        explanation: input.explanation,
+        roleMatch: input.roleMatch,
+        roleMatchReasons: input.roleMatchReasons,
+        scoreVersion: input.scoreVersion,
+        experienceScore: input.experienceScore,
+        roleMatchTier: input.roleMatchTier,
+        roleSimilarity: input.roleSimilarity,
+        roleMatchFinal: input.roleMatchFinal,
+        enrichmentStatus: input.enrichmentStatus,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
   if (!lead) {
     throw new Error("Failed to create lead candidate");
   }
@@ -83,7 +126,7 @@ export async function getLeadsByRunId(
   const cursor = options.cursor;
   const scope = options.scope ?? "matched";
 
-  const conditions = [eq(leadCandidates.runId, runId)];
+  const conditions = [eq(leadCandidates.runId, runId), hasLinkedinProfileFilter()!];
 
   if (scope === "matched") {
     conditions.push(eq(leadCandidates.roleMatch, true));
@@ -154,7 +197,7 @@ export async function countLeadsByRunId(
   options: { scope?: LeadsScope } = {},
 ): Promise<number> {
   const scope = options.scope ?? "matched";
-  const conditions = [eq(leadCandidates.runId, runId)];
+  const conditions = [eq(leadCandidates.runId, runId), hasLinkedinProfileFilter()!];
 
   if (scope === "matched") {
     conditions.push(eq(leadCandidates.roleMatch, true));

@@ -4,7 +4,7 @@ const providerIdSchema = z.union([z.string(), z.number()]).transform(String);
 
 export const crustdataPersonRefSchema = z.object({
   crustdata_person_id: providerIdSchema.optional(),
-  name: z.string(),
+  name: z.string().optional(),
   title: z.string().nullable().optional(),
   professional_network_profile_url: z.string().nullable().optional(),
   email: z.string().nullable().optional(),

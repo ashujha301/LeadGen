@@ -17,6 +17,7 @@ export type StageContext = {
   providerPeople?: CrustdataPeopleSearchResult;
   providersPersisted?: boolean;
   resolvedPersonIds?: string[];
+  enrichedPersonIds?: string[];
 };
 
 export type StageResult = {

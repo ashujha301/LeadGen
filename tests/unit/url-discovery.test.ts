@@ -8,6 +8,7 @@ import {
   compareLinkPriority,
   extractLinksFromHtml,
   isExternalProfileUrl,
+  isLinkedInCompanyProfileUrl,
   normalizeDiscoveredUrl,
   parseSitemapLocUrls,
   parseSitemapUrlsFromRobots,
@@ -36,13 +37,14 @@ describe("classifyDiscoveredLink", () => {
     expect(classifyDiscoveredLink("/team", "Meet the team")).toBe(0);
   });
 
+  it("deprioritizes low-value content paths before keyword matching", () => {
+    expect(classifyDiscoveredLink("/blog", "Leadership Team")).toBe(4);
+    expect(classifyDiscoveredLink("/press", "Press")).toBe(4);
+  });
+
   it("classifies about-like paths as high priority", () => {
     expect(classifyDiscoveredLink("/our-story", "Our Story")).toBe(1);
     expect(classifyDiscoveredLink("/about-us", "About")).toBe(1);
-  });
-
-  it("classifies careers as lower priority", () => {
-    expect(classifyDiscoveredLink("/careers", "Careers")).toBe(3);
   });
 
   it("deprioritizes legal pages", () => {
@@ -52,6 +54,11 @@ describe("classifyDiscoveredLink", () => {
 });
 
 describe("shouldSkipDiscoveredUrl", () => {
+  it("skips low-value content paths during discovery", () => {
+    expect(shouldSkipDiscoveredUrl("https://acme.test/careers")).toBe(true);
+    expect(shouldSkipDiscoveredUrl("https://acme.test/blog/post-1")).toBe(true);
+  });
+
   it("rejects assets, auth flows, and search pages", () => {
     expect(shouldSkipDiscoveredUrl("https://acme.test/assets/logo.png")).toBe(true);
     expect(shouldSkipDiscoveredUrl("https://acme.test/login")).toBe(true);
@@ -74,7 +81,12 @@ describe("shouldSkipDiscoveredUrl", () => {
 describe("isExternalProfileUrl", () => {
   it("detects linkedin profile URLs", () => {
     expect(isExternalProfileUrl("https://www.linkedin.com/in/jane-founder")).toBe(true);
-    expect(isExternalProfileUrl("https://www.linkedin.com/company/acme")).toBe(false);
+    expect(isExternalProfileUrl("https://www.linkedin.com/company/acme")).toBe(true);
+  });
+
+  it("detects linkedin company profile URLs", () => {
+    expect(isLinkedInCompanyProfileUrl("https://www.linkedin.com/company/acme")).toBe(true);
+    expect(isLinkedInCompanyProfileUrl("https://www.linkedin.com/company/acme/people")).toBe(false);
   });
 });
 
@@ -92,9 +104,9 @@ describe("dynamic homepage fixture", () => {
       expect.arrayContaining([
         "https://dynamic-discovery.test/our-story",
         "https://dynamic-discovery.test/humans",
-        "https://dynamic-discovery.test/careers",
       ]),
     );
+    expect(internalLinks.some((url) => url.includes("/careers"))).toBe(false);
     expect(internalLinks.some((url) => url.includes("/about"))).toBe(false);
     expect(internalLinks.some((url) => url.includes("/team"))).toBe(false);
   });

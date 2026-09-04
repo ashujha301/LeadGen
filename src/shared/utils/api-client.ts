@@ -71,6 +71,11 @@ export const apiClient = {
     return (await parseResponse<RunResponse>(res)).data;
   },
 
+  async cancelRun(runId: string) {
+    const res = await fetch(`${API_BASE}/v1/runs/${runId}/cancel`, { method: "POST" });
+    return (await parseResponse<RunResponse>(res)).data;
+  },
+
   async getRunLeads(runId: string, scope: "matched" | "all" = "matched", cursor?: string) {
     const params = new URLSearchParams();
     params.set("scope", scope);

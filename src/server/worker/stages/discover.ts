@@ -15,6 +15,7 @@ import {
   classifyDiscoveredLink,
   extractLinksFromHtml,
   isExternalProfileUrl,
+  isLinkedInCompanyProfileUrl,
   normalizeDiscoveredUrl,
   parseSitemapLocUrls,
   parseSitemapUrlsFromRobots,
@@ -25,6 +26,7 @@ import {
 import { USER_AGENT } from "@/shared/config";
 import { buildWebsiteSourceKey } from "@/server/domain/source-keys";
 import { getCrawlLimits } from "@/server/worker/config";
+import { assertRunNotCanceled, getRunAbortSignal } from "@/server/worker/run-abort";
 import type { MappedObservation } from "@/server/infrastructure/connectors";
 import type { StageContext, StageResult } from "../jobs/process-run";
 import {
@@ -39,6 +41,21 @@ type QueueItem = {
   depth: number;
   priority: LinkPriority;
 };
+
+const MAX_PAGE_HTML_CHARS = 120_000;
+const EARLY_STOP_SUCCESSFUL_PAGES = 5;
+const EARLY_STOP_HIGH_PRIORITY_PAGES = 3;
+
+function truncatePageHtml(html: string): string {
+  return html.length > MAX_PAGE_HTML_CHARS ? html.slice(0, MAX_PAGE_HTML_CHARS) : html;
+}
+
+function shouldStopDiscovery(successfulPages: number, highPriorityPages: number): boolean {
+  return (
+    successfulPages >= EARLY_STOP_SUCCESSFUL_PAGES ||
+    highPriorityPages >= EARLY_STOP_HIGH_PRIORITY_PAGES
+  );
+}
 
 function canonicalizeUrl(url: URL): string {
   url.hash = "";
@@ -105,13 +122,23 @@ function collectDiscoveredLinks(
     }
 
     if (isExternalProfileUrl(normalized)) {
-      profileObservations.push({
-        entityType: "contact",
-        attribute: "profile_url",
-        rawValue: normalized,
-        normalizedValue: normalized.toLowerCase(),
-        confidence: 0.6,
-      });
+      if (isLinkedInCompanyProfileUrl(normalized)) {
+        profileObservations.push({
+          entityType: "company",
+          attribute: "professional_network_url",
+          rawValue: normalized,
+          normalizedValue: normalized.toLowerCase(),
+          confidence: 0.75,
+        });
+      } else {
+        profileObservations.push({
+          entityType: "contact",
+          attribute: "profile_url",
+          rawValue: normalized,
+          normalizedValue: normalized.toLowerCase(),
+          confidence: 0.6,
+        });
+      }
       continue;
     }
 
@@ -141,121 +168,161 @@ export async function discover(ctx: StageContext): Promise<StageResult> {
   const homepageCanonical = canonicalizeUrl(new URL(baseUrl));
 
   let pagesDiscovered = 0;
+  let highPriorityPagesCrawled = 0;
+  let inFlight = 0;
   const { browser, context } = await launchBrowser();
   const crawlLimits = getCrawlLimits();
+  const abortSignal = getRunAbortSignal(ctx.runId);
+  const concurrency = Math.max(1, crawlLimits.concurrency);
 
-  try {
-    while (queue.length > 0 && canAttemptNavigation(limitState)) {
-      const item = selectNextQueueItem(queue);
-      if (!item) {
-        break;
+  async function crawlOne(item: QueueItem): Promise<void> {
+    await assertRunNotCanceled(ctx.runId);
+
+    let safeUrl: URL;
+    try {
+      safeUrl = await assertSafeNavigation(item.url);
+    } catch {
+      return;
+    }
+
+    if (!isSameRegistrableDomain(safeUrl.toString(), ctx.normalizedDomain)) {
+      return;
+    }
+
+    if (!isWithinDepth(item.depth)) {
+      return;
+    }
+
+    const canonical = canonicalizeUrl(safeUrl);
+    if (crawled.has(canonical)) {
+      return;
+    }
+
+    if (!isPathAllowed(safeUrl.pathname, robotsRules)) {
+      return;
+    }
+
+    crawled.add(canonical);
+    recordAttempt(limitState);
+
+    const page = await context.newPage();
+
+    try {
+      if (abortSignal?.aborted) {
+        throw new Error("Run aborted");
+      }
+      const response = await page.goto(canonical, {
+        timeout: crawlLimits.pageTimeoutMs,
+        waitUntil: "domcontentloaded",
+        ...(abortSignal ? { signal: abortSignal } : {}),
+      });
+      const responseStatus = response?.status() ?? null;
+      const html = await page.content();
+
+      if (!responseStatus || responseStatus >= 400) {
+        return;
       }
 
-      let safeUrl: URL;
-      try {
-        safeUrl = await assertSafeNavigation(item.url);
-      } catch {
-        continue;
+      if (!canRecordSuccessfulPage(limitState)) {
+        return;
       }
 
-      if (!isSameRegistrableDomain(safeUrl.toString(), ctx.normalizedDomain)) {
-        continue;
+      const excerpt = extractTextExcerpt(html);
+      const contentHash = hashContent(html);
+
+      const document = await sourcesRepo.upsertSourceDocument(db, {
+        runId: ctx.runId,
+        sourceType: "website",
+        sourceUrl: item.url,
+        canonicalUrl: page.url(),
+        sourceKey: buildWebsiteSourceKey(page.url()),
+        responseStatus,
+        contentHash,
+        excerpt,
+        pageHtml: truncatePageHtml(html),
+        fetchedAt: new Date(),
+        extractionStatus: "pending",
+      });
+
+      if (document.state === "already_completed") {
+        return;
       }
 
-      if (!isWithinDepth(item.depth)) {
-        continue;
+      const profileObservations: MappedObservation[] = [];
+      collectDiscoveredLinks(
+        html,
+        page.url(),
+        item.depth,
+        ctx.normalizedDomain,
+        queue,
+        scheduled,
+        profileObservations,
+      );
+
+      if (profileObservations.length > 0) {
+        await persistMappedObservations(db, document.document.id, profileObservations);
       }
 
-      const canonical = canonicalizeUrl(safeUrl);
-      if (crawled.has(canonical)) {
-        continue;
+      pagesDiscovered += 1;
+      recordSuccessfulPage(limitState);
+      if (item.priority <= 1) {
+        highPriorityPagesCrawled += 1;
       }
 
-      if (!isPathAllowed(safeUrl.pathname, robotsRules)) {
-        continue;
-      }
-
-      crawled.add(canonical);
-      recordAttempt(limitState);
-
-      const page = await context.newPage();
-
-      try {
-        const response = await page.goto(canonical, {
-          timeout: crawlLimits.pageTimeoutMs,
-          waitUntil: "domcontentloaded",
-        });
-        const responseStatus = response?.status() ?? null;
-        const html = await page.content();
-
-        if (!responseStatus || responseStatus >= 400) {
-          continue;
-        }
-
-        if (!canRecordSuccessfulPage(limitState)) {
-          continue;
-        }
-
-        const excerpt = extractTextExcerpt(html);
-        const contentHash = hashContent(html);
-
-        const document = await sourcesRepo.upsertSourceDocument(db, {
-          runId: ctx.runId,
-          sourceType: "website",
-          sourceUrl: item.url,
-          canonicalUrl: page.url(),
-          sourceKey: buildWebsiteSourceKey(page.url()),
-          responseStatus,
-          contentHash,
-          excerpt,
-          fetchedAt: new Date(),
-          extractionStatus: "pending",
-        });
-
-        if (document.state === "already_completed") {
-          continue;
-        }
-
-        const profileObservations: MappedObservation[] = [];
-        collectDiscoveredLinks(
-          html,
-          page.url(),
-          item.depth,
-          ctx.normalizedDomain,
-          queue,
-          scheduled,
-          profileObservations,
-        );
-
-        if (profileObservations.length > 0) {
-          await persistMappedObservations(db, document.document.id, profileObservations);
-        }
-
-        pagesDiscovered += 1;
-        recordSuccessfulPage(limitState);
-
-        if (!sitemapReleased && canonical === homepageCanonical) {
-          sitemapReleased = true;
-          for (const sitemapUrl of sitemapUrls) {
-            const locUrls = await fetchSitemapUrls(sitemapUrl);
-            for (const locUrl of locUrls) {
-              const normalized = normalizeDiscoveredUrl(locUrl, baseUrl);
-              if (!normalized || shouldSkipDiscoveredUrl(normalized)) {
-                continue;
-              }
-              if (!isSameRegistrableDomain(normalized, ctx.normalizedDomain)) {
-                continue;
-              }
-              enqueueDiscoveredLink(queue, scheduled, normalized, 0);
+      if (!sitemapReleased && canonical === homepageCanonical) {
+        sitemapReleased = true;
+        for (const sitemapUrl of sitemapUrls) {
+          const locUrls = await fetchSitemapUrls(sitemapUrl);
+          for (const locUrl of locUrls) {
+            const normalized = normalizeDiscoveredUrl(locUrl, baseUrl);
+            if (!normalized || shouldSkipDiscoveredUrl(normalized)) {
+              continue;
             }
+            if (!isSameRegistrableDomain(normalized, ctx.normalizedDomain)) {
+              continue;
+            }
+            enqueueDiscoveredLink(queue, scheduled, normalized, 0);
           }
         }
-      } catch (error) {
-        console.warn(`[discover] Failed to crawl ${canonical}:`, error);
-      } finally {
-        await page.close();
       }
+    } catch (error) {
+      if (abortSignal?.aborted) {
+        throw error;
+      }
+      console.warn(`[discover] Failed to crawl ${canonical}:`, error);
+    } finally {
+      await page.close();
     }
+  }
+
+  try {
+    const workers = Array.from({ length: concurrency }, async () => {
+      while (true) {
+        await assertRunNotCanceled(ctx.runId);
+        if (shouldStopDiscovery(pagesDiscovered, highPriorityPagesCrawled)) {
+          return;
+        }
+        if (!canAttemptNavigation(limitState)) {
+          return;
+        }
+        const item = selectNextQueueItem(queue);
+        if (!item) {
+          if (inFlight === 0) {
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          continue;
+        }
+        inFlight += 1;
+        try {
+          await crawlOne(item);
+        } finally {
+          inFlight -= 1;
+        }
+      }
+    });
+
+    await Promise.all(workers);
   } finally {
     await closeBrowser(browser);
   }

@@ -14,6 +14,7 @@ export type StructuredAiRequest<TSchema extends z.ZodTypeAny> = {
   prompt: string;
   runId?: string;
   db?: Db;
+  signal?: AbortSignal;
 };
 
 export type StructuredAiResult<T> =
@@ -89,6 +90,11 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), env.OPENAI_TIMEOUT_MS);
+    const onExternalAbort = () => controller.abort();
+    request.signal?.addEventListener("abort", onExternalAbort, { once: true });
+    if (request.signal?.aborted) {
+      controller.abort();
+    }
 
     let response: OpenAI.Responses.Response;
 
@@ -107,6 +113,7 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
       );
     } finally {
       clearTimeout(timeout);
+      request.signal?.removeEventListener("abort", onExternalAbort);
     }
 
     const durationMs = Date.now() - startedAt;

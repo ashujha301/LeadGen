@@ -10,7 +10,8 @@ import {
   type SearchRun,
 } from "@/server/infrastructure/db";
 
-import { enqueueRun } from "@/server/infrastructure/queue/web-queue";
+import { enqueueRun, cancelQueuedRun } from "@/server/infrastructure/queue/web-queue";
+import { abortRunProcessing } from "@/server/infrastructure/run-abort";
 
 export class RunQuotaError extends Error {
   constructor(message: string) {
@@ -156,5 +157,44 @@ export const runService = {
     const db = getDb();
     const runs = await runsRepo.listRecentRuns(db, limit);
     return runs.map((run) => toRunResponse(run));
+  },
+
+  async cancelRun(runId: string): Promise<RunResponse | null> {
+    const db = getDb();
+    const existing = await runsRepo.getRunById(db, runId);
+    if (!existing) {
+      return null;
+    }
+
+    if (existing.status === "canceled") {
+      return toRunResponse(existing);
+    }
+
+    if (existing.status === "completed" || existing.status === "failed") {
+      throw new Error("Run is already terminal");
+    }
+
+    if (existing.status === "queued") {
+      await cancelQueuedRun(runId);
+    }
+
+    abortRunProcessing(runId);
+
+    const canceled = await runsRepo.cancelRunIfActive(db, runId);
+    if (!canceled) {
+      const latest = await runsRepo.getRunById(db, runId);
+      if (latest?.status === "canceled") {
+        return toRunResponse(latest);
+      }
+      throw new Error("Run is already terminal");
+    }
+
+    await requestLimitsRepo.decrementActiveRunCount(
+      db,
+      existing.hashedClientIp,
+      startOfUtcDay(),
+    );
+
+    return toRunResponse(canceled);
   },
 };

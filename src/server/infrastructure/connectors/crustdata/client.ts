@@ -27,6 +27,7 @@ import type {
   CrustdataCompanyResult,
   CrustdataPeopleSearchResult,
   CrustdataPersonEnrichResult,
+  CrustdataPersonResult,
 } from "../types";
 
 export type CrustdataRequestMeta = {
@@ -93,6 +94,7 @@ type FetchOptions = {
   timeoutMs: number;
   cacheTtlMs?: number;
   cacheBypass?: boolean;
+  signal?: AbortSignal;
 };
 
 async function fetchWithRetry<T>(
@@ -147,8 +149,13 @@ async function fetchWithRetry<T>(
       const result = await limiter.schedule(async () => {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
+        const onExternalAbort = () => controller.abort();
+        options.signal?.addEventListener("abort", onExternalAbort, { once: true });
 
         try {
+          if (options.signal?.aborted) {
+            throw new DOMException("Aborted", "AbortError");
+          }
           const response = await fetch(`${env.CRUSTDATA_API_BASE_URL}${options.endpoint}`, {
             method: "POST",
             headers: buildHeaders(env.CRUSTDATA_API_VERSION, env.CRUSTDATA_API_KEY!),
@@ -233,6 +240,7 @@ async function fetchWithRetry<T>(
           };
         } finally {
           clearTimeout(timeout);
+          options.signal?.removeEventListener("abort", onExternalAbort);
         }
       });
 
@@ -375,7 +383,7 @@ function buildPersonSearchBody(
         {
           op: "or",
           conditions: titleConditions.map((title) => ({
-            field: "basic_profile.current_title",
+            field: "experience.employment_details.current.title",
             type: "(.)",
             value: title,
           })),
@@ -394,6 +402,33 @@ function parsePersonSearch(domain: string, payload: unknown): CrustdataPeopleSea
     .filter((person): person is NonNullable<typeof person> => person !== null);
 
   return { domain, people, raw: parsed };
+}
+
+function buildPersonNameSearchBody(name: string, domain: string): Record<string, unknown> {
+  return {
+    filters: {
+      op: "and",
+      conditions: [
+        {
+          field: "experience.employment_details.current.company_website_domain",
+          type: "=",
+          value: domain,
+        },
+        {
+          field: "basic_profile.name",
+          type: "(.)",
+          value: escapeTitleCondition(name),
+        },
+      ],
+    },
+    limit: 1,
+    fields: [
+      "crustdata_person_id",
+      "basic_profile.name",
+      "basic_profile.current_title",
+      "social_handles.professional_network_identifier.profile_url",
+    ],
+  };
 }
 
 function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult[] {
@@ -424,6 +459,7 @@ function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult[] {
 export type EnrichCompanyOptions = {
   timeoutMs?: number;
   cacheBypass?: boolean;
+  signal?: AbortSignal;
 };
 
 export async function enrichCompany(
@@ -445,6 +481,7 @@ export async function enrichCompany(
       timeoutMs: options.timeoutMs ?? env.CRUSTDATA_TIMEOUT_MS,
       cacheTtlMs: env.CRUSTDATA_CACHE_TTL_HOURS * 3_600_000,
       cacheBypass: options.cacheBypass,
+      signal: options.signal,
     },
     (payload) => parseCompanyEnrich(domain, payload),
     (data) => data === null,
@@ -479,6 +516,7 @@ export type SearchPeopleOptions = {
   timeoutMs?: number;
   limit?: number;
   titleConditions?: string[];
+  signal?: AbortSignal;
 };
 
 export async function searchPeopleByCompany(
@@ -499,6 +537,7 @@ export async function searchPeopleByCompany(
       body,
       timeoutMs: options.timeoutMs ?? env.CRUSTDATA_PEOPLE_TIMEOUT_MS,
       cacheTtlMs: env.CRUSTDATA_CACHE_TTL_HOURS * 3_600_000,
+      signal: options.signal,
     },
     (payload) => parsePersonSearch(domain, payload),
     (data) => data.people.length === 0,
@@ -511,9 +550,46 @@ export async function searchPeopleByCompany(
   return toConnectorResult(outcome);
 }
 
+export async function searchPersonByNameAndCompany(
+  name: string,
+  domain: string,
+  options: SearchPeopleOptions = {},
+): Promise<ConnectorResult<CrustdataPersonResult | null>> {
+  const env = getEnv();
+  const body = buildPersonNameSearchBody(name, domain);
+
+  const outcome = await fetchWithRetry<CrustdataPeopleSearchResult>(
+    {
+      endpoint: "/person/search",
+      limiterKey: "person_search",
+      body,
+      timeoutMs: options.timeoutMs ?? env.CRUSTDATA_PEOPLE_TIMEOUT_MS,
+      cacheTtlMs: env.CRUSTDATA_CACHE_TTL_HOURS * 3_600_000,
+      signal: options.signal,
+    },
+    (payload) => parsePersonSearch(domain, payload),
+    (data) => data.people.length === 0,
+  );
+
+  if (outcome.status === "success") {
+    return { status: "success", data: outcome.data.people[0] ?? null };
+  }
+  if (outcome.status === "no_match") {
+    return { status: "success", data: null };
+  }
+  if (outcome.status === "disabled") {
+    return { status: "disabled", reason: outcome.reason };
+  }
+  if (outcome.status === "error") {
+    return { status: "error", error: outcome.error };
+  }
+  return { status: "success", data: null };
+}
+
 export type EnrichPersonOptions = {
   timeoutMs?: number;
   cacheBypass?: boolean;
+  signal?: AbortSignal;
 };
 
 export async function enrichPerson(
@@ -540,6 +616,7 @@ export async function enrichPerson(
       timeoutMs: options.timeoutMs ?? env.CRUSTDATA_PEOPLE_TIMEOUT_MS,
       cacheTtlMs: env.CRUSTDATA_CACHE_TTL_HOURS * 3_600_000,
       cacheBypass: options.cacheBypass,
+      signal: options.signal,
     },
     (payload) => parsePersonEnrich(payload),
     (data) => data.length === 0,

@@ -1,5 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 
+import { isUniqueViolation } from "../errors";
 import type { Db } from "../client";
 import {
   businessSignals,
@@ -58,11 +59,22 @@ export async function getCompanyAliasesByCompanyId(
 }
 
 export async function createCompany(db: Db, input: NewCompany): Promise<Company> {
-  const [company] = await db.insert(companies).values(input).returning();
-  if (!company) {
-    throw new Error("Failed to create company");
+  try {
+    const [company] = await db.insert(companies).values(input).returning();
+    if (!company) {
+      throw new Error("Failed to create company");
+    }
+    return company;
+  } catch (error) {
+    if (!isUniqueViolation(error, "companies_normalized_domain_idx")) {
+      throw error;
+    }
+    const existing = await findCompanyByDomain(db, input.normalizedDomain);
+    if (existing) {
+      return existing;
+    }
+    throw error;
   }
-  return company;
 }
 
 export async function updateCompany(
@@ -128,11 +140,27 @@ export async function createCompanyAlias(
   db: Db,
   input: NewCompanyAlias,
 ): Promise<CompanyAlias> {
-  const [alias] = await db.insert(companyAliases).values(input).returning();
-  if (!alias) {
+  const [alias] = await db
+    .insert(companyAliases)
+    .values(input)
+    .onConflictDoNothing({
+      target: [companyAliases.aliasType, companyAliases.normalizedValue],
+    })
+    .returning();
+  if (alias) {
+    return alias;
+  }
+
+  const existing = await db.query.companyAliases.findFirst({
+    where: and(
+      eq(companyAliases.aliasType, input.aliasType),
+      eq(companyAliases.normalizedValue, input.normalizedValue),
+    ),
+  });
+  if (!existing) {
     throw new Error("Failed to create company alias");
   }
-  return alias;
+  return existing;
 }
 
 export async function findCompanyByAlias(
@@ -229,6 +257,37 @@ export async function createEmployment(
     throw new Error("Failed to create employment");
   }
   return employment;
+}
+
+export async function ensureCurrentEmployment(
+  db: Db,
+  input: Omit<NewEmployment, "isCurrent"> & { personId: string; companyId: string },
+): Promise<Employment> {
+  const existing = await findCurrentEmployment(db, input.personId, input.companyId);
+  if (existing) {
+    const updated = await updateEmployment(db, existing.id, {
+      rawTitle: input.rawTitle || existing.rawTitle,
+      normalizedTitle: input.normalizedTitle || existing.normalizedTitle,
+      normalizedRole: input.normalizedRole || existing.normalizedRole,
+      confidence: input.confidence ?? existing.confidence,
+      lastObservedAt: new Date(),
+      lastConfirmedRunId: input.lastConfirmedRunId ?? existing.lastConfirmedRunId,
+    });
+    return updated ?? existing;
+  }
+
+  try {
+    return await createEmployment(db, { ...input, isCurrent: true });
+  } catch (error) {
+    if (!isUniqueViolation(error, "employments_current_person_company_idx")) {
+      throw error;
+    }
+    const raced = await findCurrentEmployment(db, input.personId, input.companyId);
+    if (raced) {
+      return raced;
+    }
+    throw error;
+  }
 }
 
 export async function updateEmployment(
@@ -330,11 +389,22 @@ export async function createContactPoint(
   db: Db,
   input: NewContactPoint,
 ): Promise<ContactPoint> {
-  const [contact] = await db.insert(contactPoints).values(input).returning();
-  if (!contact) {
+  const [contact] = await db
+    .insert(contactPoints)
+    .values(input)
+    .onConflictDoNothing({
+      target: [contactPoints.type, contactPoints.normalizedValue],
+    })
+    .returning();
+  if (contact) {
+    return contact;
+  }
+
+  const existing = await findContactByNormalizedValue(db, input.type, input.normalizedValue);
+  if (!existing) {
     throw new Error("Failed to create contact point");
   }
-  return contact;
+  return existing;
 }
 
 export async function updateContactPoint(
@@ -505,9 +575,35 @@ export async function upsertPersonExternalProfile(
     }
   }
 
-  const [created] = await db.insert(personExternalProfiles).values(input).returning();
-  if (!created) {
-    throw new Error("Failed to upsert person external profile");
+  try {
+    const [created] = await db.insert(personExternalProfiles).values(input).returning();
+    if (!created) {
+      throw new Error("Failed to upsert person external profile");
+    }
+    return created;
+  } catch (error) {
+    if (!isUniqueViolation(error)) {
+      throw error;
+    }
+    if (input.providerPersonId) {
+      const existingByProvider = await db.query.personExternalProfiles.findFirst({
+        where: and(
+          eq(personExternalProfiles.provider, provider),
+          eq(personExternalProfiles.providerPersonId, input.providerPersonId),
+        ),
+      });
+      if (existingByProvider) {
+        return existingByProvider;
+      }
+    }
+    if (input.normalizedProfileUrl) {
+      const existingByUrl = await db.query.personExternalProfiles.findFirst({
+        where: eq(personExternalProfiles.normalizedProfileUrl, input.normalizedProfileUrl),
+      });
+      if (existingByUrl) {
+        return existingByUrl;
+      }
+    }
+    throw error;
   }
-  return created;
 }

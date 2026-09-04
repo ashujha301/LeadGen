@@ -1,7 +1,8 @@
-import { pickCompanyName } from "@/server/domain/company-identity";
+import { pickCompanyNameFromObservations, isGenericCompanyLabel } from "@/server/domain/company-identity";
 import { isErrorPageTitle } from "@/server/domain/normalization/title";
 import { normalizeCompanyInput } from "@/server/domain/normalization/company-input";
 import { buildPersonSearchSourceKey, hashRoleCriteria } from "@/server/domain/source-keys";
+import { validatePersonMention } from "@/server/domain/entity-resolution/mention-validation";
 import {
   matchPersons,
   normalizeDomain,
@@ -10,24 +11,16 @@ import {
   normalizeTitle,
   type PersonCandidate,
 } from "@/server/domain";
+import {
+  dedupePersonDrafts,
+  findExistingPersonByNameAtCompany,
+  type PersonDraft,
+} from "@/server/domain/entity-resolution/person-drafts";
 
-export { pickCompanyName };
+export { pickCompanyNameFromObservations as pickCompanyName };
 import { getDb, entitiesRepo, runsRepo, sourcesRepo } from "@/server/infrastructure/db";
 
 import type { StageContext, StageResult } from "../jobs/process-run";
-
-type PersonDraft = {
-  name: string;
-  normalizedName: string;
-  title?: string;
-  email?: string;
-  phone?: string;
-  profileUrl?: string;
-  crustdataPersonId?: string;
-  confidence: number;
-  sourceDocumentId: string;
-  subjectKey: string;
-};
 
 function collectPersonDrafts(
   docObs: Array<{
@@ -57,9 +50,14 @@ function collectPersonDrafts(
       continue;
     }
 
+    const mention = validatePersonMention(nameObs.rawValue);
+    if (!mention.valid) {
+      continue;
+    }
+
     drafts.push({
-      name: nameObs.rawValue,
-      normalizedName: nameObs.normalizedValue ?? normalizeName(nameObs.rawValue),
+      name: mention.normalizedName || nameObs.rawValue,
+      normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
       title: subjectObs.find((obs) => obs.entityType === "person" && obs.attribute === "title")?.rawValue,
       email: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "email")?.rawValue,
       phone: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "phone")?.rawValue,
@@ -76,10 +74,15 @@ function collectPersonDrafts(
   );
 
   for (const nameObs of namesWithoutKey) {
+    const mention = validatePersonMention(nameObs.rawValue);
+    if (!mention.valid) {
+      continue;
+    }
+
     const subjectKey = nameObs.id;
     drafts.push({
-      name: nameObs.rawValue,
-      normalizedName: nameObs.normalizedValue ?? normalizeName(nameObs.rawValue),
+      name: mention.normalizedName || nameObs.rawValue,
+      normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
       title: docObs.find(
         (obs) =>
           obs.entityType === "person" &&
@@ -121,13 +124,33 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
   const documents = await sourcesRepo.getSourceDocumentsByRunId(db, ctx.runId);
   const run = await runsRepo.getRunById(db, ctx.runId);
 
-  const companyObs = allObservations.filter((obs) => obs.entityType === "company");
+  const companyObs = allObservations
+    .filter((obs) => obs.entityType === "company")
+    .map((obs) => {
+      const document = documents.find((doc) => doc.id === obs.sourceDocumentId);
+      let isHomepage = false;
+      if (document?.canonicalUrl) {
+        try {
+          const path = new URL(document.canonicalUrl).pathname.replace(/\/+$/, "") || "/";
+          isHomepage = path === "/";
+        } catch {
+          isHomepage = false;
+        }
+      }
+      return {
+        attribute: obs.attribute,
+        rawValue: obs.rawValue,
+        sourceUrl: document?.canonicalUrl,
+        isHomepage,
+      };
+    });
   let company = await entitiesRepo.findCompanyByDomain(db, ctx.normalizedDomain);
 
-  const companyName =
-    ctx.providerCompany?.name ?? pickCompanyName(companyObs, ctx.normalizedDomain);
   const normalizedInput = normalizeCompanyInput(ctx.domain);
   const websiteUrl = normalizedInput?.homepageUrl ?? `https://${ctx.normalizedDomain}`;
+  const companyName =
+    ctx.providerCompany?.name ??
+    pickCompanyNameFromObservations(companyObs, ctx.normalizedDomain, websiteUrl);
 
   if (!company) {
     company = await entitiesRepo.createCompany(db, {
@@ -145,9 +168,12 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
     const updates: Parameters<typeof entitiesRepo.updateCompany>[2] = {};
 
     if (
-      (company.name === ctx.normalizedDomain || isErrorPageTitle(company.name)) &&
+      (company.name === ctx.normalizedDomain ||
+        isErrorPageTitle(company.name) ||
+        isGenericCompanyLabel(company.name, ctx.normalizedDomain)) &&
       companyName !== ctx.normalizedDomain &&
-      !isErrorPageTitle(companyName)
+      !isErrorPageTitle(companyName) &&
+      !isGenericCompanyLabel(companyName, ctx.normalizedDomain)
     ) {
       updates.name = companyName;
       updates.normalizedName = normalizeName(companyName);
@@ -187,6 +213,17 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
       if (Number.isFinite(count)) {
         await entitiesRepo.updateCompany(db, company.id, { employeeCount: count });
       }
+    }
+    if (
+      obs.attribute === "professional_network_url" &&
+      obs.rawValue &&
+      !company.professionalNetworkUrl &&
+      !ctx.providerCompany?.linkedinUrl
+    ) {
+      await entitiesRepo.updateCompany(db, company.id, {
+        professionalNetworkUrl: obs.rawValue,
+      });
+      company = { ...company, professionalNetworkUrl: obs.rawValue };
     }
   }
 
@@ -254,7 +291,7 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
   const resolvedPeople: Array<{ id: string; draft: PersonDraft }> = [];
   let peopleResolved = 0;
 
-  for (const draft of allDrafts) {
+  for (const draft of dedupePersonDrafts(allDrafts)) {
     const candidate: PersonCandidate = {
       name: draft.normalizedName,
       title: draft.title ? normalizeTitle(draft.title) : null,
@@ -263,29 +300,34 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
       currentCompanyId: company.id,
     };
 
-    let matchedPersonId: string | null = null;
+    let matchedPersonId: string | null = findExistingPersonByNameAtCompany(
+      draft,
+      existingPeople.filter((person): person is NonNullable<typeof person> => Boolean(person)),
+    );
 
-    for (const person of existingPeople) {
-      if (!person) {
-        continue;
-      }
+    if (!matchedPersonId) {
+      for (const person of existingPeople) {
+        if (!person) {
+          continue;
+        }
 
-      const employment = existingEmployments.find((row) => row.personId === person.id);
-      const existingCandidate: PersonCandidate = {
-        name: person.normalizedName,
-        title: employment?.normalizedTitle ?? null,
-        profileUrl: person.profileUrl,
-        currentCompanyId: company.id,
-      };
+        const employment = existingEmployments.find((row) => row.personId === person.id);
+        const existingCandidate: PersonCandidate = {
+          name: person.normalizedName,
+          title: employment?.normalizedTitle ?? null,
+          profileUrl: person.profileUrl,
+          currentCompanyId: company.id,
+        };
 
-      const match = matchPersons(candidate, existingCandidate);
-      if (match.decision === "auto_merge") {
-        matchedPersonId = person.id;
-        break;
-      }
+        const match = matchPersons(candidate, existingCandidate);
+        if (match.decision === "auto_merge") {
+          matchedPersonId = person.id;
+          break;
+        }
 
-      if (match.decision === "review") {
-        // Keep separate entities; match will be recorded after creating the new person.
+        if (match.decision === "review") {
+          // Keep separate entities; match will be recorded after creating the new person.
+        }
       }
     }
 
@@ -347,18 +389,16 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
       existingPeople.push(await entitiesRepo.getPersonById(db, personId));
     }
 
-    const hasEmployment = existingEmployments.some((employment) => employment.personId === personId);
-
-    if (!hasEmployment) {
-      await entitiesRepo.createEmployment(db, {
-        personId,
-        companyId: company.id,
-        rawTitle: draft.title ?? null,
-        normalizedTitle: draft.title ? normalizeTitle(draft.title) : null,
-        normalizedRole: draft.title ? normalizeTitle(draft.title) : null,
-        isCurrent: true,
-        confidence: String(draft.confidence),
-      });
+    const employment = await entitiesRepo.ensureCurrentEmployment(db, {
+      personId,
+      companyId: company.id,
+      rawTitle: draft.title ?? null,
+      normalizedTitle: draft.title ? normalizeTitle(draft.title) : null,
+      normalizedRole: draft.title ? normalizeTitle(draft.title) : null,
+      confidence: String(draft.confidence),
+    });
+    if (!existingEmployments.some((row) => row.id === employment.id)) {
+      existingEmployments.push(employment);
     }
 
     if (draft.email) {
@@ -468,7 +508,7 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
     }
   }
 
-  ctx.resolvedPersonIds = resolvedPeople.map((person) => person.id);
+  ctx.resolvedPersonIds = [...new Set(resolvedPeople.map((person) => person.id))];
 
   await runsRepo.updateRunProgress(db, ctx.runId, {
     stage: "resolving",

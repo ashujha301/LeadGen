@@ -1,6 +1,7 @@
 import { normalizeName, nameSimilarity } from "../normalization/name";
 import { normalizeTitle, titleSimilarity } from "../normalization/title";
 import { normalizeUrl } from "../normalization/url";
+import { isUsableEmail, isUsableProfileUrl } from "./contact-identity";
 
 export type PersonCandidate = {
   profileUrl?: string | null;
@@ -44,6 +45,9 @@ export function scoreProfileUrlMatch(a: PersonCandidate, b: PersonCandidate): nu
   if (!a.profileUrl || !b.profileUrl) {
     return 0;
   }
+  if (!isUsableProfileUrl(a.profileUrl) || !isUsableProfileUrl(b.profileUrl)) {
+    return 0;
+  }
 
   const left = normalizeUrl(a.profileUrl);
   const right = normalizeUrl(b.profileUrl);
@@ -52,6 +56,9 @@ export function scoreProfileUrlMatch(a: PersonCandidate, b: PersonCandidate): nu
 
 export function scoreEmailMatch(a: PersonCandidate, b: PersonCandidate): number {
   if (!a.email || !b.email) {
+    return 0;
+  }
+  if (!isUsableEmail(a.email) || !isUsableEmail(b.email)) {
     return 0;
   }
 

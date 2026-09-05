@@ -2,6 +2,11 @@ import { extractPage } from "@/server/infrastructure/ai";
 import { fetchCompanyPage, mapCompanyPageToObservations } from "@/server/infrastructure/connectors";
 import { getDb, runsRepo, sourcesRepo } from "@/server/infrastructure/db";
 import { getEnv } from "@/shared/config/server";
+import {
+  isUsableEmail,
+  isUsablePhone,
+  isUsableProfileUrl,
+} from "@/server/domain/entity-resolution/contact-identity";
 import { validatePersonMention } from "@/server/domain/entity-resolution/mention-validation";
 
 import type { StageContext, StageResult } from "../jobs/process-run";
@@ -134,7 +139,7 @@ async function extractDocument(
           });
         }
 
-        if (person.email) {
+        if (person.email && isUsableEmail(person.email)) {
           aiObservations.push({
             entityType: "contact" as const,
             attribute: "email",
@@ -145,7 +150,7 @@ async function extractDocument(
           });
         }
 
-        if (person.phone) {
+        if (person.phone && isUsablePhone(person.phone)) {
           aiObservations.push({
             entityType: "contact" as const,
             attribute: "phone",
@@ -155,7 +160,7 @@ async function extractDocument(
           });
         }
 
-        if (person.profileUrl) {
+        if (person.profileUrl && isUsableProfileUrl(person.profileUrl)) {
           aiObservations.push({
             entityType: "contact" as const,
             attribute: "profile_url",

@@ -124,10 +124,11 @@ export function qualifiesAsHighValueLead(input: {
   isStale: boolean;
   hasVerifiedCurrentEmployment: boolean;
 }): boolean {
+  // roleMatch / roleMatchFinal intentionally ignored for HVL eligibility.
+  void input.roleMatch;
+  void input.roleMatchFinal;
   return (
     input.scoreVersion >= HIGH_VALUE_LEAD_THRESHOLDS.scoreVersion &&
-    input.roleMatchFinal &&
-    input.roleMatch &&
     input.finalScore >= HIGH_VALUE_LEAD_THRESHOLDS.minScore &&
     input.confidence >= HIGH_VALUE_LEAD_THRESHOLDS.minConfidence &&
     !input.isStale &&

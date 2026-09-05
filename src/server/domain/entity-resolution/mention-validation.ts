@@ -1,3 +1,5 @@
+import { isUsableProfileUrl } from "./contact-identity";
+
 const CTA_PREFIXES = [
   /^connect\s+/i,
   /^meet\s+/i,
@@ -79,6 +81,9 @@ export function normalizeProfileUrl(url: string | null | undefined): string | nu
   if (!url?.trim()) {
     return null;
   }
+  if (!isUsableProfileUrl(url)) {
+    return null;
+  }
   try {
     const parsed = new URL(url.trim());
     parsed.hash = "";
@@ -89,6 +94,6 @@ export function normalizeProfileUrl(url: string | null | undefined): string | nu
     }
     return `${parsed.protocol}//${parsed.host.toLowerCase()}${pathname.toLowerCase()}`;
   } catch {
-    return url.trim().toLowerCase();
+    return null;
   }
 }

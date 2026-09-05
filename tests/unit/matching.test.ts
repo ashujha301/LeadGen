@@ -98,4 +98,32 @@ describe("person matching", () => {
     expect(classifyMatchDecision(0.7)).toBe("review");
     expect(classifyMatchDecision(0.69)).toBe("separate");
   });
+
+  it("does not auto-merge two people that only share a slash profile url", () => {
+    const result = matchPersons(
+      {
+        profileUrl: "/",
+        name: "Mr Arindam Ghosh",
+        title: "Independent Director",
+        currentCompanyId: "navi",
+      },
+      {
+        profileUrl: "/",
+        name: "Abhishek Kumar Singh",
+        title: "Founder",
+        currentCompanyId: "devvine",
+      },
+    );
+
+    expect(result.decision).not.toBe("auto_merge");
+    expect(result.features.find((f) => f.feature === "profileUrl")?.score ?? 0).toBe(0);
+  });
+
+  it("does not score slash emails as an email match", () => {
+    const result = matchPersons(
+      { email: "/", name: "Ada" },
+      { email: "/", name: "Grace" },
+    );
+    expect(result.features.find((f) => f.feature === "email")?.score ?? 0).toBe(0);
+  });
 });

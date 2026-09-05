@@ -4,6 +4,12 @@ import { normalizeCompanyInput } from "@/server/domain/normalization/company-inp
 import { buildPersonSearchSourceKey, hashRoleCriteria } from "@/server/domain/source-keys";
 import { validatePersonMention } from "@/server/domain/entity-resolution/mention-validation";
 import {
+  isUsableEmail,
+  isUsablePhone,
+  isUsableProfileUrl,
+  sanitizePersonDraftContacts,
+} from "@/server/domain/entity-resolution/contact-identity";
+import {
   matchPersons,
   normalizeDomain,
   normalizeEmail,
@@ -55,18 +61,20 @@ function collectPersonDrafts(
       continue;
     }
 
-    drafts.push({
-      name: mention.normalizedName || nameObs.rawValue,
-      normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
-      title: subjectObs.find((obs) => obs.entityType === "person" && obs.attribute === "title")?.rawValue,
-      email: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "email")?.rawValue,
-      phone: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "phone")?.rawValue,
-      profileUrl: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "profile_url")
-        ?.rawValue,
-      confidence: Number(nameObs.confidence),
-      sourceDocumentId,
-      subjectKey,
-    });
+    drafts.push(
+      sanitizePersonDraftContacts({
+        name: mention.normalizedName || nameObs.rawValue,
+        normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
+        title: subjectObs.find((obs) => obs.entityType === "person" && obs.attribute === "title")?.rawValue,
+        email: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "email")?.rawValue,
+        phone: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "phone")?.rawValue,
+        profileUrl: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "profile_url")
+          ?.rawValue,
+        confidence: Number(nameObs.confidence),
+        sourceDocumentId,
+        subjectKey,
+      }),
+    );
   }
 
   const namesWithoutKey = docObs.filter(
@@ -80,37 +88,39 @@ function collectPersonDrafts(
     }
 
     const subjectKey = nameObs.id;
-    drafts.push({
-      name: mention.normalizedName || nameObs.rawValue,
-      normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
-      title: docObs.find(
-        (obs) =>
-          obs.entityType === "person" &&
-          obs.attribute === "title" &&
-          (obs.subjectKey === subjectKey || !obs.subjectKey),
-      )?.rawValue,
-      email: docObs.find(
-        (obs) =>
-          obs.entityType === "contact" &&
-          obs.attribute === "email" &&
-          (obs.subjectKey === subjectKey || !obs.subjectKey),
-      )?.rawValue,
-      phone: docObs.find(
-        (obs) =>
-          obs.entityType === "contact" &&
-          obs.attribute === "phone" &&
-          (obs.subjectKey === subjectKey || !obs.subjectKey),
-      )?.rawValue,
-      profileUrl: docObs.find(
-        (obs) =>
-          obs.entityType === "contact" &&
-          obs.attribute === "profile_url" &&
-          (obs.subjectKey === subjectKey || !obs.subjectKey),
-      )?.rawValue,
-      confidence: Number(nameObs.confidence),
-      sourceDocumentId,
-      subjectKey,
-    });
+    drafts.push(
+      sanitizePersonDraftContacts({
+        name: mention.normalizedName || nameObs.rawValue,
+        normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
+        title: docObs.find(
+          (obs) =>
+            obs.entityType === "person" &&
+            obs.attribute === "title" &&
+            (obs.subjectKey === subjectKey || !obs.subjectKey),
+        )?.rawValue,
+        email: docObs.find(
+          (obs) =>
+            obs.entityType === "contact" &&
+            obs.attribute === "email" &&
+            (obs.subjectKey === subjectKey || !obs.subjectKey),
+        )?.rawValue,
+        phone: docObs.find(
+          (obs) =>
+            obs.entityType === "contact" &&
+            obs.attribute === "phone" &&
+            (obs.subjectKey === subjectKey || !obs.subjectKey),
+        )?.rawValue,
+        profileUrl: docObs.find(
+          (obs) =>
+            obs.entityType === "contact" &&
+            obs.attribute === "profile_url" &&
+            (obs.subjectKey === subjectKey || !obs.subjectKey),
+        )?.rawValue,
+        confidence: Number(nameObs.confidence),
+        sourceDocumentId,
+        subjectKey,
+      }),
+    );
   }
 
   return drafts;
@@ -242,18 +252,20 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
   if (ctx.providerPeople?.people.length) {
     const sourceDocumentId = personSearchDoc?.id ?? documents[0]?.id ?? "";
     for (const [index, person] of ctx.providerPeople.people.entries()) {
-      allDrafts.push({
-        name: person.name,
-        normalizedName: normalizeName(person.name),
-        title: person.title ?? undefined,
-        profileUrl: person.linkedinUrl ?? undefined,
-        crustdataPersonId: person.crustdataPersonId ?? undefined,
-        confidence: 0.85,
-        sourceDocumentId,
-        subjectKey: person.crustdataPersonId
-          ? `crustdata:${person.crustdataPersonId}`
-          : `crustdata-search-${index}`,
-      });
+      allDrafts.push(
+        sanitizePersonDraftContacts({
+          name: person.name,
+          normalizedName: normalizeName(person.name),
+          title: person.title ?? undefined,
+          profileUrl: person.linkedinUrl ?? undefined,
+          crustdataPersonId: person.crustdataPersonId ?? undefined,
+          confidence: 0.85,
+          sourceDocumentId,
+          subjectKey: person.crustdataPersonId
+            ? `crustdata:${person.crustdataPersonId}`
+            : `crustdata-search-${index}`,
+        }),
+      );
     }
   }
 
@@ -268,18 +280,20 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
       ...(ctx.providerCompany.decisionMakers ?? []),
     ];
     for (const [index, person] of providerPeople.entries()) {
-      allDrafts.push({
-        name: person.name,
-        normalizedName: normalizeName(person.name),
-        title: person.title ?? undefined,
-        profileUrl: person.professional_network_profile_url ?? undefined,
-        crustdataPersonId: person.crustdata_person_id,
-        confidence: 0.88,
-        sourceDocumentId,
-        subjectKey: person.crustdata_person_id
-          ? `crustdata:${person.crustdata_person_id}`
-          : `crustdata-company-person-${index}`,
-      });
+      allDrafts.push(
+        sanitizePersonDraftContacts({
+          name: person.name,
+          normalizedName: normalizeName(person.name),
+          title: person.title ?? undefined,
+          profileUrl: person.professional_network_profile_url ?? undefined,
+          crustdataPersonId: person.crustdata_person_id,
+          confidence: 0.88,
+          sourceDocumentId,
+          subjectKey: person.crustdata_person_id
+            ? `crustdata:${person.crustdata_person_id}`
+            : `crustdata-company-person-${index}`,
+        }),
+      );
     }
   }
 
@@ -292,16 +306,17 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
   let peopleResolved = 0;
 
   for (const draft of dedupePersonDrafts(allDrafts)) {
+    const safeDraft = sanitizePersonDraftContacts(draft);
     const candidate: PersonCandidate = {
-      name: draft.normalizedName,
-      title: draft.title ? normalizeTitle(draft.title) : null,
-      email: draft.email ? normalizeEmail(draft.email) : null,
-      profileUrl: draft.profileUrl ?? null,
+      name: safeDraft.normalizedName,
+      title: safeDraft.title ? normalizeTitle(safeDraft.title) : null,
+      email: safeDraft.email ? normalizeEmail(safeDraft.email) : null,
+      profileUrl: safeDraft.profileUrl ?? null,
       currentCompanyId: company.id,
     };
 
     let matchedPersonId: string | null = findExistingPersonByNameAtCompany(
-      draft,
+      safeDraft,
       existingPeople.filter((person): person is NonNullable<typeof person> => Boolean(person)),
     );
 
@@ -334,22 +349,28 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
     let personId = matchedPersonId;
 
     if (!personId) {
-      const byProfile = draft.profileUrl
-        ? await entitiesRepo.findPersonByProfileUrl(db, draft.profileUrl)
-        : undefined;
-      const byEmail = draft.email
-        ? await entitiesRepo.findContactByNormalizedValue(db, "email", normalizeEmail(draft.email))
-        : undefined;
+      const byProfile =
+        safeDraft.profileUrl && isUsableProfileUrl(safeDraft.profileUrl)
+          ? await entitiesRepo.findPersonByProfileUrl(db, safeDraft.profileUrl)
+          : undefined;
+      const byEmail =
+        safeDraft.email && isUsableEmail(safeDraft.email)
+          ? await entitiesRepo.findContactByNormalizedValue(
+              db,
+              "email",
+              normalizeEmail(safeDraft.email),
+            )
+          : undefined;
 
       personId =
         byProfile?.id ??
         byEmail?.personId ??
         (
           await entitiesRepo.createPerson(db, {
-            name: draft.name,
-            normalizedName: draft.normalizedName,
-            profileUrl: draft.profileUrl ?? null,
-            confidence: String(draft.confidence),
+            name: safeDraft.name,
+            normalizedName: safeDraft.normalizedName,
+            profileUrl: safeDraft.profileUrl ?? null,
+            confidence: String(safeDraft.confidence),
             freshness: "1",
           })
         ).id;
@@ -371,7 +392,7 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
       if (reviewTarget?.id && reviewTarget.id !== personId) {
         const reviewMatch = matchPersons(candidate, {
           name: reviewTarget.normalizedName,
-          title: draft.title ? normalizeTitle(draft.title) : null,
+          title: safeDraft.title ? normalizeTitle(safeDraft.title) : null,
           profileUrl: reviewTarget.profileUrl,
           currentCompanyId: company.id,
         });
@@ -392,17 +413,17 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
     const employment = await entitiesRepo.ensureCurrentEmployment(db, {
       personId,
       companyId: company.id,
-      rawTitle: draft.title ?? null,
-      normalizedTitle: draft.title ? normalizeTitle(draft.title) : null,
-      normalizedRole: draft.title ? normalizeTitle(draft.title) : null,
-      confidence: String(draft.confidence),
+      rawTitle: safeDraft.title ?? null,
+      normalizedTitle: safeDraft.title ? normalizeTitle(safeDraft.title) : null,
+      normalizedRole: safeDraft.title ? normalizeTitle(safeDraft.title) : null,
+      confidence: String(safeDraft.confidence),
     });
     if (!existingEmployments.some((row) => row.id === employment.id)) {
       existingEmployments.push(employment);
     }
 
-    if (draft.email) {
-      const normalizedEmail = normalizeEmail(draft.email);
+    if (safeDraft.email && isUsableEmail(safeDraft.email)) {
+      const normalizedEmail = normalizeEmail(safeDraft.email);
       const existingContact = await entitiesRepo.findContactByNormalizedValue(
         db,
         "email",
@@ -413,17 +434,17 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
           personId,
           companyId: company.id,
           type: "email",
-          rawValue: draft.email,
+          rawValue: safeDraft.email,
           normalizedValue: normalizedEmail,
           verificationStatus: "unverified",
-          confidence: String(draft.confidence),
+          confidence: String(safeDraft.confidence),
           freshness: "1",
         });
       }
     }
 
-    if (draft.phone) {
-      const normalizedPhone = draft.phone.replace(/\s+/g, "");
+    if (safeDraft.phone && isUsablePhone(safeDraft.phone)) {
+      const normalizedPhone = safeDraft.phone.replace(/\s+/g, "");
       const existingPhone = await entitiesRepo.findContactByNormalizedValue(
         db,
         "phone",
@@ -434,17 +455,17 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
           personId,
           companyId: company.id,
           type: "phone",
-          rawValue: draft.phone,
+          rawValue: safeDraft.phone,
           normalizedValue: normalizedPhone,
           verificationStatus: "unverified",
-          confidence: String(draft.confidence),
+          confidence: String(safeDraft.confidence),
           freshness: "1",
         });
       }
     }
 
-    if (draft.profileUrl) {
-      const normalizedLinkedin = draft.profileUrl.toLowerCase();
+    if (safeDraft.profileUrl && isUsableProfileUrl(safeDraft.profileUrl)) {
+      const normalizedLinkedin = safeDraft.profileUrl.toLowerCase();
       const existingLinkedin = await entitiesRepo.findContactByNormalizedValue(
         db,
         "linkedin",
@@ -455,29 +476,29 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
           personId,
           companyId: company.id,
           type: "linkedin",
-          rawValue: draft.profileUrl,
+          rawValue: safeDraft.profileUrl,
           normalizedValue: normalizedLinkedin,
           verificationStatus: "unverified",
-          confidence: String(draft.confidence),
+          confidence: String(safeDraft.confidence),
           freshness: "1",
         });
       }
     }
 
-    if (draft.crustdataPersonId) {
+    if (safeDraft.crustdataPersonId) {
       await entitiesRepo.upsertPersonExternalProfile(db, {
         personId,
         provider: "crustdata",
-        providerPersonId: draft.crustdataPersonId,
-        profileUrl: draft.profileUrl ?? null,
-        normalizedProfileUrl: draft.profileUrl?.toLowerCase() ?? null,
+        providerPersonId: safeDraft.crustdataPersonId,
+        profileUrl: safeDraft.profileUrl ?? null,
+        normalizedProfileUrl: safeDraft.profileUrl?.toLowerCase() ?? null,
       });
     }
 
     const signalObs = allObservations.filter(
       (obs) =>
         obs.entityType === "signal" &&
-        obs.sourceDocumentId === draft.sourceDocumentId,
+        obs.sourceDocumentId === safeDraft.sourceDocumentId,
     );
 
     for (const signal of signalObs) {
@@ -487,11 +508,11 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
         value: signal.rawValue,
         observedAt: signal.observedAt,
         confidence: signal.confidence,
-        sourceDocumentId: draft.sourceDocumentId,
+        sourceDocumentId: safeDraft.sourceDocumentId,
       });
     }
 
-    resolvedPeople.push({ id: personId, draft });
+    resolvedPeople.push({ id: personId, draft: safeDraft });
     peopleResolved += 1;
   }
 

@@ -67,8 +67,8 @@ describe("lenient high value lead thresholds", () => {
     expect(
       qualifiesAsHighValueLead({
         scoreVersion: 2,
-        roleMatchFinal: true,
-        roleMatch: true,
+        roleMatchFinal: false,
+        roleMatch: false,
         finalScore: 36,
         confidence: 0.36,
         isStale: false,

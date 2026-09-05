@@ -5,6 +5,11 @@ import {
   getScoreComponentMax,
 } from "./score-config";
 import type { ScoreComponentResult } from "./acquisition-score";
+import {
+  isUsableEmail,
+  isUsablePhone,
+  isUsableProfileUrl,
+} from "@/server/domain/entity-resolution/contact-identity";
 
 export type ContactPointInput = {
   type: "email" | "phone" | "linkedin" | "other";
@@ -25,9 +30,15 @@ export function scoreContactability(input: ContactabilityInput, scoreVersion = 1
   let rawValue = 0;
   let reasonCode: ReasonCode = REASON_CODES.contact.none;
 
-  const emails = input.contacts.filter((contact) => contact.type === "email");
-  const phones = input.contacts.filter((contact) => contact.type === "phone");
-  const linkedins = input.contacts.filter((contact) => contact.type === "linkedin");
+  const emails = input.contacts.filter(
+    (contact) => contact.type === "email" && isUsableEmail(contact.value),
+  );
+  const phones = input.contacts.filter(
+    (contact) => contact.type === "phone" && isUsablePhone(contact.value),
+  );
+  const linkedins = input.contacts.filter(
+    (contact) => contact.type === "linkedin" && isUsableProfileUrl(contact.value),
+  );
 
   const verifiedEmail = emails.find((contact) => contact.verificationStatus === "verified");
   const unverifiedEmail = emails.find((contact) => contact.verificationStatus !== "invalid");

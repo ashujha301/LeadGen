@@ -30,6 +30,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed-demo.ts",
     "db:cleanup": "tsx scripts/cleanup-old-data.ts",
+    "db:repair-garbage-contacts": "tsx --import dotenv/config scripts/repair-garbage-contacts.ts",
+    "db:repair-hvl-duplicates": "tsx --import dotenv/config scripts/repair-hvl-duplicate-leads.ts",
     "verify:deployment": "tsx scripts/verify-deployment.ts",
     "db:studio": "drizzle-kit studio"
   },

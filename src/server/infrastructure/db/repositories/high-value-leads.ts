@@ -1,5 +1,11 @@
-import { and, desc, eq, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 
+import { pickCanonicalLeadPerPerson } from "@/server/domain/leads/hvl-person-dedupe";
+import {
+  computeLeadNeighbors,
+  sortHighValueLeadsByScoreThenId,
+  type HighValueLeadNavigation,
+} from "@/server/domain/leads/hvl-navigation";
 import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
 
 import type { Db } from "../client";
@@ -11,6 +17,8 @@ import {
   type Company,
   type LeadCandidate,
 } from "../schema/index";
+
+export type { HighValueLeadNavigation };
 
 export type HighValueCompanySummary = Company & {
   qualifyingLeadCount: number;
@@ -41,8 +49,6 @@ const hasLinkedinProfileFilter = or(
 
 const qualificationFilter = and(
   eq(leadCandidates.scoreVersion, HIGH_VALUE_LEAD_THRESHOLDS.scoreVersion),
-  eq(leadCandidates.roleMatchFinal, true),
-  eq(leadCandidates.roleMatch, true),
   sql`${leadCandidates.finalScore} >= ${HIGH_VALUE_LEAD_THRESHOLDS.minScore}`,
   sql`${leadCandidates.confidence} >= ${HIGH_VALUE_LEAD_THRESHOLDS.minConfidence}`,
   eq(leadCandidates.isStale, false),
@@ -55,7 +61,7 @@ export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySu
   const qualifyingCounts = await db
     .select({
       companyId: leadCandidates.companyId,
-      count: sql<number>`count(*)::int`,
+      count: sql<number>`count(distinct ${leadCandidates.personId})::int`,
       topScore: sql<number>`max(${leadCandidates.finalScore})`,
     })
     .from(leadCandidates)
@@ -101,34 +107,55 @@ export async function getHighValueLeadsByCompanyId(
   options: { limit?: number; cursor?: string } = {},
 ): Promise<HighValueLeadsPage> {
   const limit = options.limit ?? 20;
-  const conditions = [eq(leadCandidates.companyId, companyId), qualificationFilter];
-
-  if (options.cursor) {
-    const cursorLead = await db.query.leadCandidates.findFirst({
-      where: eq(leadCandidates.id, options.cursor),
-      columns: { finalScore: true, id: true },
-    });
-    if (cursorLead) {
-      conditions.push(lt(leadCandidates.finalScore, cursorLead.finalScore));
-    }
-  }
 
   const leads = await db.query.leadCandidates.findMany({
-    where: and(...conditions),
+    where: and(eq(leadCandidates.companyId, companyId), qualificationFilter),
     orderBy: [desc(leadCandidates.finalScore), desc(leadCandidates.id)],
-    limit: limit + 1,
     with: {
       person: true,
       company: true,
     },
   });
 
-  const hasMore = leads.length > limit;
-  const page = hasMore ? leads.slice(0, limit) : leads;
+  let deduped = sortHighValueLeadsByScoreThenId(
+    pickCanonicalLeadPerPerson(leads as HighValueLeadRow[]),
+  );
+
+  if (options.cursor) {
+    const cursorIndex = deduped.findIndex((lead) => lead.id === options.cursor);
+    if (cursorIndex >= 0) {
+      deduped = deduped.slice(cursorIndex + 1);
+    } else {
+      const cursorLead = leads.find((lead) => lead.id === options.cursor);
+      if (cursorLead) {
+        const cursorScore = Number(cursorLead.finalScore);
+        deduped = deduped.filter(
+          (lead) =>
+            Number(lead.finalScore) < cursorScore ||
+            (Number(lead.finalScore) === cursorScore && lead.id < cursorLead.id),
+        );
+      }
+    }
+  }
+
+  const hasMore = deduped.length > limit;
+  const page = hasMore ? deduped.slice(0, limit) : deduped;
   return {
-    leads: page as HighValueLeadRow[],
+    leads: page,
     nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
   };
+}
+
+export async function getHighValueLeadNavigation(
+  db: Db,
+  companyId: string,
+  leadId: string,
+): Promise<HighValueLeadNavigation | null> {
+  const { leads } = await getHighValueLeadsByCompanyId(db, companyId, { limit: 10_000 });
+  return computeLeadNeighbors(
+    leads.map((lead) => lead.id),
+    leadId,
+  );
 }
 
 export async function getHighValueCompanyById(

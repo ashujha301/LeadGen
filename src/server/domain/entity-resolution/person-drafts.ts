@@ -1,4 +1,5 @@
 import { normalizeEmail } from "@/server/domain/entity-resolution/person";
+import { isUsableEmail, isUsableProfileUrl } from "@/server/domain/entity-resolution/contact-identity";
 import { nameSimilarity } from "@/server/domain/normalization/name";
 import { normalizeUrl } from "@/server/domain/normalization/url";
 
@@ -16,7 +17,7 @@ export type PersonDraft = {
 };
 
 export function profileIdentityKey(profileUrl: string | undefined): string | null {
-  if (!profileUrl) {
+  if (!profileUrl || !isUsableProfileUrl(profileUrl)) {
     return null;
   }
 
@@ -65,7 +66,7 @@ function identityKeys(draft: PersonDraft): string[] {
   if (profileKey) {
     keys.push(`profile:${profileKey}`);
   }
-  if (draft.email) {
+  if (draft.email && isUsableEmail(draft.email)) {
     keys.push(`email:${normalizeEmail(draft.email)}`);
   }
   return keys;

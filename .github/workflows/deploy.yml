@@ -125,19 +125,15 @@ jobs:
                 exit 1
               fi
 
-              # Repo is owned by root; OS Login deploy user needs an explicit safe.directory.
-              git config --global --add safe.directory \"\${APP_CHECKOUT}\"
-
-              cd \"\${APP_CHECKOUT}\"
-
-              if [[ -n \"\$(git status --porcelain)\" ]]; then
+              # Checkout is root-owned; run git via sudo so fetch can write .git/FETCH_HEAD.
+              if [[ -n \"\$(sudo git -C \"\${APP_CHECKOUT}\" status --porcelain)\" ]]; then
                 echo \"[deploy] Refusing to update dirty checkout at \${APP_CHECKOUT}\" >&2
-                git status --porcelain >&2
+                sudo git -C \"\${APP_CHECKOUT}\" status --porcelain >&2
                 exit 1
               fi
 
-              git fetch --prune origin
-              git checkout --detach \"\${SHA}\"
+              sudo git -C \"\${APP_CHECKOUT}\" fetch --prune origin
+              sudo git -C \"\${APP_CHECKOUT}\" checkout --detach \"\${SHA}\"
 
               sudo env \
                 APP_DIR=\"\${APP_DIR}\" \

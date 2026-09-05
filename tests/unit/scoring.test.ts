@@ -43,7 +43,10 @@ describe("lead scoring", () => {
     expect(first.total).toBe(second.total);
     expect(first.components).toHaveLength(6);
 
-    const componentSum = first.components.reduce((sum, component) => sum + component.contribution, 0);
+    const componentSum = first.components.reduce(
+      (sum, component) => sum + component.contribution,
+      0,
+    );
     expect(first.total).toBe(Math.round(componentSum * 100) / 100);
     expect(first.total).toBeLessThanOrEqual(TOTAL_SCORE_MAX);
     expect(first.keyReason).toBeTruthy();
@@ -111,7 +114,9 @@ describe("lead scoring", () => {
   it("still awards contactability for a real unverified email", () => {
     const result = scoreContactability(
       {
-        contacts: [{ type: "email", value: "founder@devvine.ai", verificationStatus: "unverified" }],
+        contacts: [
+          { type: "email", value: "founder@devvine.ai", verificationStatus: "unverified" },
+        ],
       },
       2,
     );

@@ -41,11 +41,9 @@ export async function runNaturalSearch(
   }
 
   if (parsed.status === "error") {
-    throw new NaturalSearchError(
-      "SEARCH_NOT_UNDERSTOOD",
-      "Could not understand the search query",
-      { error: parsed.error },
-    );
+    throw new NaturalSearchError("SEARCH_NOT_UNDERSTOOD", "Could not understand the search query", {
+      error: parsed.error,
+    });
   }
 
   let intent: SearchIntent;

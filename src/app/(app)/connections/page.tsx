@@ -128,17 +128,26 @@ export default function ConnectionsPage() {
               {results.map((row, idx) => (
                 <tr key={idx} className="hover:bg-surface-raised/50">
                   <td className="px-3 py-2">
-                    <Link href={`/people/${row.personA.id}`} className="text-accent hover:underline">
+                    <Link
+                      href={`/people/${row.personA.id}`}
+                      className="text-accent hover:underline"
+                    >
                       {row.personA.name}
                     </Link>
                   </td>
                   <td className="px-3 py-2">
-                    <Link href={`/people/${row.personB.id}`} className="text-accent hover:underline">
+                    <Link
+                      href={`/people/${row.personB.id}`}
+                      className="text-accent hover:underline"
+                    >
                       {row.personB.name}
                     </Link>
                   </td>
                   <td className="px-3 py-2">
-                    <Link href={`/companies/${row.company.id}`} className="text-accent hover:underline">
+                    <Link
+                      href={`/companies/${row.company.id}`}
+                      className="text-accent hover:underline"
+                    >
                       {row.company.name}
                     </Link>
                   </td>

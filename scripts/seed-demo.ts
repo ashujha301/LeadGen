@@ -49,7 +49,11 @@ async function seedDemo() {
       canonicalUrl: `https://${normalizedDomain}${fixture.path}`,
       responseStatus: 200,
       contentHash: createHash("sha256").update(html).digest("hex"),
-      excerpt: html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500),
+      excerpt: html
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 500),
       fetchedAt: new Date(),
       extractionStatus: "completed",
     });

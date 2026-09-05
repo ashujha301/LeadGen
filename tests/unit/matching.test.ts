@@ -120,10 +120,7 @@ describe("person matching", () => {
   });
 
   it("does not score slash emails as an email match", () => {
-    const result = matchPersons(
-      { email: "/", name: "Ada" },
-      { email: "/", name: "Grace" },
-    );
+    const result = matchPersons({ email: "/", name: "Ada" }, { email: "/", name: "Grace" });
     expect(result.features.find((f) => f.feature === "email")?.score ?? 0).toBe(0);
   });
 });

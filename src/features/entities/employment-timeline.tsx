@@ -23,8 +23,14 @@ type EmploymentTimelineProps = {
 };
 
 function formatDateRange(start: string | null, end: string | null, isCurrent: boolean): string {
-  const startLabel = start ? new Date(start).toLocaleDateString(undefined, { year: "numeric", month: "short" }) : "?";
-  const endLabel = isCurrent ? "Present" : end ? new Date(end).toLocaleDateString(undefined, { year: "numeric", month: "short" }) : "?";
+  const startLabel = start
+    ? new Date(start).toLocaleDateString(undefined, { year: "numeric", month: "short" })
+    : "?";
+  const endLabel = isCurrent
+    ? "Present"
+    : end
+      ? new Date(end).toLocaleDateString(undefined, { year: "numeric", month: "short" })
+      : "?";
   return `${startLabel} – ${endLabel}`;
 }
 
@@ -86,7 +92,10 @@ export function EmploymentTimeline({
       )}
       <ol className="relative ml-3 border-l border-[var(--border)] pl-6">
         {sorted.map((employment) => (
-          <li key={`${employment.companyId ?? employment.companyName}-${employment.startDate}-${employment.title}`} className="mb-4 last:mb-0">
+          <li
+            key={`${employment.companyId ?? employment.companyName}-${employment.startDate}-${employment.title}`}
+            className="mb-4 last:mb-0"
+          >
             <span
               className={`absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-background ${
                 employment.isCurrent ? "bg-accent" : "bg-muted"

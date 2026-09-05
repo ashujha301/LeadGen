@@ -1,5 +1,8 @@
 import { normalizeEmail } from "@/server/domain/entity-resolution/person";
-import { isUsableEmail, isUsableProfileUrl } from "@/server/domain/entity-resolution/contact-identity";
+import {
+  isUsableEmail,
+  isUsableProfileUrl,
+} from "@/server/domain/entity-resolution/contact-identity";
 import { nameSimilarity } from "@/server/domain/normalization/name";
 import { normalizeUrl } from "@/server/domain/normalization/url";
 

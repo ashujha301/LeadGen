@@ -39,19 +39,9 @@ export {
   type LeadDetail,
 } from "./lead";
 
-export {
-  companySchema,
-  companyDetailSchema,
-  type Company,
-  type CompanyDetail,
-} from "./company";
+export { companySchema, companyDetailSchema, type Company, type CompanyDetail } from "./company";
 
-export {
-  personSchema,
-  personDetailSchema,
-  type Person,
-  type PersonDetail,
-} from "./person";
+export { personSchema, personDetailSchema, type Person, type PersonDetail } from "./person";
 
 export {
   searchIntentSchema,

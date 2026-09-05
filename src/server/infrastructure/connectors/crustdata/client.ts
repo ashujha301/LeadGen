@@ -178,7 +178,15 @@ async function fetchWithRetry<T>(
               error: sanitized.reason
                 ? `Bad request (${response.status}): ${sanitized.reason}`
                 : `Bad request (${response.status})`,
-              meta: buildMeta(options.endpoint, response.status, durationMs, attempts, 0, "miss", creditsUsed),
+              meta: buildMeta(
+                options.endpoint,
+                response.status,
+                durationMs,
+                attempts,
+                0,
+                "miss",
+                creditsUsed,
+              ),
             };
           }
 
@@ -187,7 +195,15 @@ async function fetchWithRetry<T>(
             return {
               kind: "error" as const,
               error: "Unauthorized",
-              meta: buildMeta(options.endpoint, response.status, durationMs, attempts, 0, "miss", creditsUsed),
+              meta: buildMeta(
+                options.endpoint,
+                response.status,
+                durationMs,
+                attempts,
+                0,
+                "miss",
+                creditsUsed,
+              ),
             };
           }
 
@@ -195,14 +211,30 @@ async function fetchWithRetry<T>(
             return {
               kind: "error" as const,
               error: "Permission or credit failure",
-              meta: buildMeta(options.endpoint, response.status, durationMs, attempts, 0, "miss", creditsUsed),
+              meta: buildMeta(
+                options.endpoint,
+                response.status,
+                durationMs,
+                attempts,
+                0,
+                "miss",
+                creditsUsed,
+              ),
             };
           }
 
           if (response.status === 404) {
             return {
               kind: "no_match" as const,
-              meta: buildMeta(options.endpoint, response.status, durationMs, attempts, 0, "miss", creditsUsed),
+              meta: buildMeta(
+                options.endpoint,
+                response.status,
+                durationMs,
+                attempts,
+                0,
+                "miss",
+                creditsUsed,
+              ),
             };
           }
 
@@ -220,7 +252,15 @@ async function fetchWithRetry<T>(
             return {
               kind: "error" as const,
               error: `Request failed with status ${response.status}`,
-              meta: buildMeta(options.endpoint, response.status, durationMs, attempts, 0, "miss", creditsUsed),
+              meta: buildMeta(
+                options.endpoint,
+                response.status,
+                durationMs,
+                attempts,
+                0,
+                "miss",
+                creditsUsed,
+              ),
             };
           }
 
@@ -237,14 +277,30 @@ async function fetchWithRetry<T>(
           if (isEmpty(data)) {
             return {
               kind: "no_match" as const,
-              meta: buildMeta(options.endpoint, response.status, durationMs, attempts, recordsReturned, "miss", creditsUsed),
+              meta: buildMeta(
+                options.endpoint,
+                response.status,
+                durationMs,
+                attempts,
+                recordsReturned,
+                "miss",
+                creditsUsed,
+              ),
             };
           }
 
           return {
             kind: "success" as const,
             data,
-            meta: buildMeta(options.endpoint, response.status, durationMs, attempts, recordsReturned, "miss", creditsUsed),
+            meta: buildMeta(
+              options.endpoint,
+              response.status,
+              durationMs,
+              attempts,
+              recordsReturned,
+              "miss",
+              creditsUsed,
+            ),
           };
         } finally {
           clearTimeout(timeout);
@@ -464,8 +520,7 @@ function emptyEnrichResult(
 
 function describeZodFailure(error: ZodError): { path: string; type: string } {
   const issue = error.issues[0] as
-    | { path?: Array<string | number>; received?: unknown; code?: string }
-    | undefined;
+    { path?: Array<string | number>; received?: unknown; code?: string } | undefined;
   return {
     path: issue?.path?.join(".") || "unknown",
     type: String(issue?.received ?? issue?.code ?? "unknown"),
@@ -481,9 +536,7 @@ export function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult
     const parsed = crustdataPersonEnrichEntrySchema.safeParse(entry);
     if (!parsed.success) {
       const failure = describeZodFailure(parsed.error);
-      console.warn(
-        `[crustdata] schema_failure path=${failure.path} type=${failure.type}`,
-      );
+      console.warn(`[crustdata] schema_failure path=${failure.path} type=${failure.type}`);
       return emptyEnrichResult("failed", entry, {
         schemaFailurePath: failure.path,
         schemaFailureType: failure.type,
@@ -499,11 +552,7 @@ export function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult
       });
     }
 
-    return mapPersonDataToEnrichResult(
-      match.person_data,
-      status,
-      parsed.data.matched_on ?? null,
-    );
+    return mapPersonDataToEnrichResult(match.person_data, status, parsed.data.matched_on ?? null);
   });
 }
 

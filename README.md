@@ -45,34 +45,34 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Environment variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `OPENAI_API_KEY` | Yes | OpenAI API key for structured extraction |
-| `OPENAI_MODEL` | No | Default `gpt-5.4-mini` |
-| `IP_HASH_SALT` | Yes | Salt for hashing client IPs |
-| `PUBLIC_RUN_LIMIT_PER_IP_DAY` | No | Default `3` |
-| `PUBLIC_GLOBAL_RUN_LIMIT_DAY` | No | Default `50` |
-| `PUBLIC_ACTIVE_RUNS_PER_IP` | No | Default `1` |
-| `CRUSTDATA_API_KEY` | No | Optional enrichment provider |
-| `EMAIL_VERIFIER_API_KEY` | No | Optional email verification |
+| Variable                      | Required | Description                              |
+| ----------------------------- | -------- | ---------------------------------------- |
+| `DATABASE_URL`                | Yes      | PostgreSQL connection string             |
+| `OPENAI_API_KEY`              | Yes      | OpenAI API key for structured extraction |
+| `OPENAI_MODEL`                | No       | Default `gpt-5.4-mini`                   |
+| `IP_HASH_SALT`                | Yes      | Salt for hashing client IPs              |
+| `PUBLIC_RUN_LIMIT_PER_IP_DAY` | No       | Default `3`                              |
+| `PUBLIC_GLOBAL_RUN_LIMIT_DAY` | No       | Default `50`                             |
+| `PUBLIC_ACTIVE_RUNS_PER_IP`   | No       | Default `1`                              |
+| `CRUSTDATA_API_KEY`           | No       | Optional enrichment provider             |
+| `EMAIL_VERIFIER_API_KEY`      | No       | Optional email verification              |
 
 See `.env.example` for the full list.
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Start Next.js web and worker concurrently |
-| `pnpm build` | Build all workspace packages |
-| `pnpm typecheck` | TypeScript check across monorepo |
-| `pnpm lint` | ESLint |
-| `pnpm test` | Unit tests (Vitest) |
+| Command                 | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `pnpm dev`              | Start Next.js web and worker concurrently               |
+| `pnpm build`            | Build all workspace packages                            |
+| `pnpm typecheck`        | TypeScript check across monorepo                        |
+| `pnpm lint`             | ESLint                                                  |
+| `pnpm test`             | Unit tests (Vitest)                                     |
 | `pnpm test:integration` | Integration tests (requires `DATABASE_URL` for pg-boss) |
-| `pnpm test:e2e` | Playwright E2E tests |
-| `pnpm db:generate` | Generate Drizzle migrations |
-| `pnpm db:migrate` | Apply migrations |
-| `pnpm db:seed` | Seed demo fixture data |
+| `pnpm test:e2e`         | Playwright E2E tests                                    |
+| `pnpm db:generate`      | Generate Drizzle migrations                             |
+| `pnpm db:migrate`       | Apply migrations                                        |
+| `pnpm db:seed`          | Seed demo fixture data                                  |
 
 ### Optional smoke tests
 
@@ -122,15 +122,15 @@ infra/          Docker, Terraform, Nginx, deploy scripts
 
 ## Pages
 
-| Route | Purpose |
-|---|---|
-| `/` | Domain search, natural language search, recent runs |
-| `/runs/[runId]` | Pipeline progress, ranked leads, CSV export |
-| `/leads/[leadId]` | Score breakdown, evidence, timeline, graph |
-| `/companies/[companyId]` | Canonical company profile |
-| `/people/[personId]` | Person profile, contacts, employment |
-| `/connections` | Shared-employment overlap search |
-| `/review` | Read-only ambiguous entity matches |
+| Route                    | Purpose                                             |
+| ------------------------ | --------------------------------------------------- |
+| `/`                      | Domain search, natural language search, recent runs |
+| `/runs/[runId]`          | Pipeline progress, ranked leads, CSV export         |
+| `/leads/[leadId]`        | Score breakdown, evidence, timeline, graph          |
+| `/companies/[companyId]` | Canonical company profile                           |
+| `/people/[personId]`     | Person profile, contacts, employment                |
+| `/connections`           | Shared-employment overlap search                    |
+| `/review`                | Read-only ambiguous entity matches                  |
 
 ## Deployment
 

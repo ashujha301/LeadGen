@@ -9,7 +9,10 @@ describe("freshness decay", () => {
 
   it("halves at the configured half-life", () => {
     expect(calculateFreshness(FRESHNESS_HALF_LIFE_DAYS.contact, "contact")).toBeCloseTo(0.5, 5);
-    expect(calculateFreshness(FRESHNESS_HALF_LIFE_DAYS.employment, "employment")).toBeCloseTo(0.5, 5);
+    expect(calculateFreshness(FRESHNESS_HALF_LIFE_DAYS.employment, "employment")).toBeCloseTo(
+      0.5,
+      5,
+    );
     expect(calculateFreshness(FRESHNESS_HALF_LIFE_DAYS.company, "company")).toBeCloseTo(0.5, 5);
   });
 

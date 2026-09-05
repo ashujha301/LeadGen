@@ -83,8 +83,7 @@ function readRegistrar(payload: Record<string, unknown>): string | null {
 }
 
 export function mapRdapPayload(domain: string, payload: unknown): RdapDomainResult {
-  const record =
-    payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  const record = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
 
   const status = Array.isArray(record.status)
     ? record.status.filter((value): value is string => typeof value === "string")

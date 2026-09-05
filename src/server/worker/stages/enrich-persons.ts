@@ -62,7 +62,8 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
     runId: ctx.runId,
     connectorName: "crustdata_person_enrich",
     endpoint: "/person/enrich",
-    status: result.status === "success" ? "success" : result.status === "disabled" ? "skipped" : "failed",
+    status:
+      result.status === "success" ? "success" : result.status === "disabled" ? "skipped" : "failed",
     durationMs: Date.now() - startedAt,
     errorCode: result.status === "error" ? result.error : null,
     recordsReturned: result.status === "success" ? result.data.length : null,
@@ -87,8 +88,7 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
       continue;
     }
 
-    const normalizedProfile =
-      normalizeUrl(identityUrl)?.toLowerCase() ?? identityUrl.toLowerCase();
+    const normalizedProfile = normalizeUrl(identityUrl)?.toLowerCase() ?? identityUrl.toLowerCase();
     const sourceKey = buildPersonEnrichSourceKey(normalizedProfile);
     const upsert = await sourcesRepo.upsertSourceDocument(db, {
       runId: ctx.runId,

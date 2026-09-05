@@ -3,10 +3,7 @@ import type { Db } from "@/server/infrastructure/db";
 
 import { createStructuredResponse } from "./client";
 import { buildParseSearchQueryPrompt } from "./prompts/search";
-import {
-  SEARCH_INTENT_SCHEMA_VERSION,
-  searchIntentOutputSchema,
-} from "./schemas/search-intent";
+import { SEARCH_INTENT_SCHEMA_VERSION, searchIntentOutputSchema } from "./schemas/search-intent";
 
 export type ParseSearchQueryInput = {
   query: string;

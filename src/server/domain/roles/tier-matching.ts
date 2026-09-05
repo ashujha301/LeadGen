@@ -19,9 +19,7 @@ const DEFAULT_EXECUTIVE_TITLES = ["founder", "ceo", "president", "owner", "chief
 
 function isExactCustomMatch(title: string, criteria: RoleCriteria): boolean {
   const normalizedTitle = title.trim().toLowerCase();
-  return criteria.customTitles.some(
-    (phrase) => phrase.trim().toLowerCase() === normalizedTitle,
-  );
+  return criteria.customTitles.some((phrase) => phrase.trim().toLowerCase() === normalizedTitle);
 }
 
 function isSynonymMatch(title: string, criteria: RoleCriteria): boolean {
@@ -42,8 +40,10 @@ function isFallbackExecutive(title: string | null | undefined): boolean {
     return false;
   }
   const normalized = normalizeTitle(title);
-  return DEFAULT_EXECUTIVE_TITLES.some((token) => normalized.includes(token)) ||
-    EXECUTIVE_SYNONYMS.some((token) => normalized.includes(token));
+  return (
+    DEFAULT_EXECUTIVE_TITLES.some((token) => normalized.includes(token)) ||
+    EXECUTIVE_SYNONYMS.some((token) => normalized.includes(token))
+  );
 }
 
 export function matchRoleWithTier(
@@ -62,7 +62,12 @@ export function matchRoleWithTier(
   }
 
   const base = matchTitleAgainstRoleCriteria(title, criteria);
-  if (!criteria || (criteria.seniorities.length === 0 && criteria.functions.length === 0 && criteria.customTitles.length === 0)) {
+  if (
+    !criteria ||
+    (criteria.seniorities.length === 0 &&
+      criteria.functions.length === 0 &&
+      criteria.customTitles.length === 0)
+  ) {
     const fallback = isFallbackExecutive(title);
     return {
       roleMatch: fallback,

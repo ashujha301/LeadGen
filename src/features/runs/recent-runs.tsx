@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/features/shell/empty-state";
 import { ErrorState } from "@/features/shell/error-state";
 
-const STATUS_VARIANT: Record<string, "default" | "success" | "warning" | "destructive" | "secondary"> = {
+const STATUS_VARIANT: Record<
+  string,
+  "default" | "success" | "warning" | "destructive" | "secondary"
+> = {
   completed: "success",
   failed: "destructive",
   queued: "secondary",

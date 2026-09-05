@@ -122,8 +122,9 @@ export async function scoreLeads(ctx: StageContext): Promise<StageResult> {
       companyId: company.id,
       icpFitScore: String(icpFitTotal),
       decisionAuthorityScore: String(
-        score.components.find((component) => component.key === SCORE_COMPONENT_KEYS.decisionAuthority)
-          ?.contribution ?? 0,
+        score.components.find(
+          (component) => component.key === SCORE_COMPONENT_KEYS.decisionAuthority,
+        )?.contribution ?? 0,
       ),
       businessSignalsScore: String(
         score.components.find((component) => component.key === SCORE_COMPONENT_KEYS.businessSignals)

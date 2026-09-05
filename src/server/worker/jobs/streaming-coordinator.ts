@@ -41,10 +41,7 @@ type ProviderResults = {
   crustdataPersonSearch: Awaited<ReturnType<typeof searchPeopleByCompany>> | null;
 };
 
-async function runStage<T>(
-  ctx: StageContext,
-  fn: () => Promise<T>,
-): Promise<T> {
+async function runStage<T>(ctx: StageContext, fn: () => Promise<T>): Promise<T> {
   await assertRunNotCanceled(ctx.runId);
   return fn();
 }
@@ -130,9 +127,7 @@ export async function runStreamingPipeline(payload: ProcessRunPayload): Promise<
         }
         timings.crustdataPersonSearchStarted = Date.now();
         const titleTerms = roleCriteriaToTitleSearchTerms(run.roleCriteria);
-        const titleConditions = titleTerms.length
-          ? buildTitleConditions(titleTerms)
-          : undefined;
+        const titleConditions = titleTerms.length ? buildTitleConditions(titleTerms) : undefined;
         providerResults.crustdataPersonSearch = await searchPeopleByCompany(ctx.normalizedDomain, {
           timeoutMs: env.CRUSTDATA_PEOPLE_TIMEOUT_MS,
           limit: env.CRUSTDATA_MAX_PEOPLE_PER_RUN,
@@ -199,11 +194,7 @@ export async function runStreamingPipeline(payload: ProcessRunPayload): Promise<
     });
 
     await runsRepo.completeRun(db, ctx.runId);
-    await requestLimitsRepo.decrementActiveRunCount(
-      db,
-      run.hashedClientIp,
-      startOfUtcDay(),
-    );
+    await requestLimitsRepo.decrementActiveRunCount(db, run.hashedClientIp, startOfUtcDay());
     quotaReleased = true;
 
     console.log(
@@ -218,11 +209,7 @@ export async function runStreamingPipeline(payload: ProcessRunPayload): Promise<
       if (current?.status !== "canceled") {
         const canceled = await runsRepo.cancelRunIfActive(db, ctx.runId);
         if (canceled && !quotaReleased) {
-          await requestLimitsRepo.decrementActiveRunCount(
-            db,
-            run.hashedClientIp,
-            startOfUtcDay(),
-          );
+          await requestLimitsRepo.decrementActiveRunCount(db, run.hashedClientIp, startOfUtcDay());
           quotaReleased = true;
         }
       }
@@ -252,11 +239,7 @@ export async function runStreamingPipeline(payload: ProcessRunPayload): Promise<
     }
 
     if (!quotaReleased) {
-      await requestLimitsRepo.decrementActiveRunCount(
-        db,
-        run.hashedClientIp,
-        startOfUtcDay(),
-      );
+      await requestLimitsRepo.decrementActiveRunCount(db, run.hashedClientIp, startOfUtcDay());
     }
 
     throw error;

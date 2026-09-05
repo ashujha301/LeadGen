@@ -1,10 +1,4 @@
-import {
-  index,
-  numeric,
-  pgTable,
-  text,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, numeric, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 import { createdAt } from "./helpers";
 import { leadCandidates } from "./lead-candidates";

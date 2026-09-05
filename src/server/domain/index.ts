@@ -47,11 +47,7 @@ export {
   type FreshnessCategory,
 } from "./confidence/freshness";
 
-export {
-  employmentOverlapDays,
-  employmentRangesOverlap,
-  type DateRange,
-} from "./timeline/overlap";
+export { employmentOverlapDays, employmentRangesOverlap, type DateRange } from "./timeline/overlap";
 
 export {
   buildEmploymentHistory,
@@ -60,11 +56,7 @@ export {
   type EmploymentRecord,
 } from "./timeline/employment-history";
 
-export {
-  buildLeadGraph,
-  emptyGraph,
-  type LeadGraphInput,
-} from "./search/graph-response";
+export { buildLeadGraph, emptyGraph, type LeadGraphInput } from "./search/graph-response";
 
 export {
   findEmploymentOverlaps,
@@ -74,7 +66,4 @@ export {
 } from "./search/connection-search";
 
 export { classifyTitle, type TitleClassification } from "./roles/classification";
-export {
-  matchTitleAgainstRoleCriteria,
-  type RoleMatchResult,
-} from "./roles/matching";
+export { matchTitleAgainstRoleCriteria, type RoleMatchResult } from "./roles/matching";

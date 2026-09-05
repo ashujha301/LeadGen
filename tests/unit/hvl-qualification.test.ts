@@ -31,9 +31,9 @@ describe("qualifiesAsHighValueLead (score gate without role)", () => {
   });
 
   it("rejects scoreVersion 1", () => {
-    expect(qualifiesAsHighValueLead({ ...base, scoreVersion: 1, finalScore: 90, confidence: 0.9 })).toBe(
-      false,
-    );
+    expect(
+      qualifiesAsHighValueLead({ ...base, scoreVersion: 1, finalScore: 90, confidence: 0.9 }),
+    ).toBe(false);
   });
 
   it("score gates ignore role fields", () => {

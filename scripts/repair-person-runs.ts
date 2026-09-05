@@ -73,7 +73,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log("\nApply mode is not implemented yet. Review the report and approve a follow-up change set.");
+  console.log(
+    "\nApply mode is not implemented yet. Review the report and approve a follow-up change set.",
+  );
 }
 
 main().catch((error) => {

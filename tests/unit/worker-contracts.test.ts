@@ -35,7 +35,10 @@ describe("worker job characterization", () => {
   it("process-run delegates to the streaming coordinator", () => {
     const jobSource = readFileSync(join(WORKER_ROOT, "jobs/process-run.ts"), "utf8");
     expect(jobSource).toContain("runStreamingPipeline");
-    const coordinatorSource = readFileSync(join(WORKER_ROOT, "jobs/streaming-coordinator.ts"), "utf8");
+    const coordinatorSource = readFileSync(
+      join(WORKER_ROOT, "jobs/streaming-coordinator.ts"),
+      "utf8",
+    );
     expect(coordinatorSource).toContain("scoreLeadsIncremental");
     expect(coordinatorSource).toContain("runEventsRepo.createRunEvent");
     expect(coordinatorSource).toContain("providerTasks");

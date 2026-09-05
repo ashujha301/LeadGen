@@ -24,7 +24,8 @@ const REASON_CODE_MESSAGES: Record<string, string> = {
   [REASON_CODES.authority.cSuite]: "The person holds C-suite decision authority.",
   [REASON_CODES.authority.vpDirector]: "The person holds VP or director-level authority.",
   [REASON_CODES.authority.manager]: "The person appears to be a manager-level contact.",
-  [REASON_CODES.authority.individualContributor]: "The person appears to be an individual contributor.",
+  [REASON_CODES.authority.individualContributor]:
+    "The person appears to be an individual contributor.",
   [REASON_CODES.authority.unknownRole]: "Decision authority is uncertain from available role data.",
   [REASON_CODES.signals.funding]: "Recent funding activity suggests a timely outreach window.",
   [REASON_CODES.signals.hiring]: "Hiring activity indicates potential buying motion.",

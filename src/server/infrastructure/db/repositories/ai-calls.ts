@@ -15,13 +15,11 @@ export async function updateAiCallStatus(
   db: Db,
   aiCallId: string,
   update: Pick<AiCall, "status"> &
-    Partial<Pick<AiCall, "responseId" | "inputTokens" | "outputTokens" | "durationMs" | "errorMessage">>,
+    Partial<
+      Pick<AiCall, "responseId" | "inputTokens" | "outputTokens" | "durationMs" | "errorMessage">
+    >,
 ): Promise<AiCall | undefined> {
-  const [call] = await db
-    .update(aiCalls)
-    .set(update)
-    .where(eq(aiCalls.id, aiCallId))
-    .returning();
+  const [call] = await db.update(aiCalls).set(update).where(eq(aiCalls.id, aiCallId)).returning();
   return call;
 }
 

@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import type { CreateRunRequest, RunProgress, RunResponse, RunRefreshMetadata, RunStatus } from "@/shared/contracts";
+import type {
+  CreateRunRequest,
+  RunProgress,
+  RunResponse,
+  RunRefreshMetadata,
+  RunStatus,
+} from "@/shared/contracts";
 import { getEnv } from "@/shared/config/server";
 import {
   getDb,
@@ -41,10 +47,7 @@ export function planRunCreation(input: {
   return { kind: "create_new" };
 }
 
-export function buildRefreshMetadata(
-  run: SearchRun,
-  reusedActiveRun: boolean,
-): RunRefreshMetadata {
+export function buildRefreshMetadata(run: SearchRun, reusedActiveRun: boolean): RunRefreshMetadata {
   return {
     reusedActiveRun,
     refreshOfRunId: run.refreshOfRunId ?? null,
@@ -199,11 +202,7 @@ export const runService = {
       throw new Error("Run is already terminal");
     }
 
-    await requestLimitsRepo.decrementActiveRunCount(
-      db,
-      existing.hashedClientIp,
-      startOfUtcDay(),
-    );
+    await requestLimitsRepo.decrementActiveRunCount(db, existing.hashedClientIp, startOfUtcDay());
 
     return toRunResponse(canceled);
   },

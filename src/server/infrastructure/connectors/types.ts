@@ -74,11 +74,7 @@ export type CrustdataPersonExperience = {
 };
 
 export type CrustdataPersonEnrichStatus =
-  | "matched"
-  | "not_found"
-  | "redacted"
-  | "invalid"
-  | "failed";
+  "matched" | "not_found" | "redacted" | "invalid" | "failed";
 
 export type CrustdataPersonEnrichResult = {
   crustdataPersonId: string | null;

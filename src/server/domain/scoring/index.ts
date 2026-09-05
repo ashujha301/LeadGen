@@ -73,9 +73,21 @@ export { scoreCompanyIcpFit, scoreIcpFit } from "./acquisition-score";
 export type { IcpFitInput, ScoreComponentResult } from "./acquisition-score";
 export { scoreTargetRoleFit, type TargetRoleFitInput } from "./target-role-fit";
 export { scoreDecisionAuthority, type DecisionAuthorityInput } from "./decision-authority";
-export { scoreBusinessSignals, type BusinessSignalInput, type BusinessSignalsScoreInput } from "./business-signals";
-export { scoreContactability, type ContactPointInput, type ContactabilityInput } from "./contactability";
-export { scoreEvidenceQuality, type EvidenceInput, type EvidenceQualityInput } from "./evidence-quality";
+export {
+  scoreBusinessSignals,
+  type BusinessSignalInput,
+  type BusinessSignalsScoreInput,
+} from "./business-signals";
+export {
+  scoreContactability,
+  type ContactPointInput,
+  type ContactabilityInput,
+} from "./contactability";
+export {
+  scoreEvidenceQuality,
+  type EvidenceInput,
+  type EvidenceQualityInput,
+} from "./evidence-quality";
 export { REASON_CODES, type ReasonCode } from "./reason-codes";
 export {
   SCORE_COMPONENT_KEYS,

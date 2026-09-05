@@ -11,12 +11,7 @@ export type PersonCandidate = {
   title?: string | null;
 };
 
-export type PersonMatchFeature =
-  | "profileUrl"
-  | "email"
-  | "currentCompany"
-  | "name"
-  | "title";
+export type PersonMatchFeature = "profileUrl" | "email" | "currentCompany" | "name" | "title";
 
 export type PersonFeatureScore = {
   feature: PersonMatchFeature;

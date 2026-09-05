@@ -22,18 +22,7 @@ import {
   listOwnedPersonIdsForCompany,
   userOwnsCompany,
 } from "@/server/infrastructure/db/repositories/ownership";
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  ilike,
-  inArray,
-  or,
-  sql,
-  type SQL,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 
 export type StructuredSearchResult = LeadSearchResult;
 
@@ -181,13 +170,13 @@ export function intentHasMeaningfulConstraint(intent: SearchIntent): boolean {
   if (intent.mode === "leads") {
     return Boolean(
       intent.roles?.length ||
-        intent.seniority?.length ||
-        intent.company ||
-        intent.scoreThreshold !== undefined ||
-        intent.confidenceThreshold !== undefined ||
-        intent.signalType ||
-        intent.dateRange?.from ||
-        intent.dateRange?.to,
+      intent.seniority?.length ||
+      intent.company ||
+      intent.scoreThreshold !== undefined ||
+      intent.confidenceThreshold !== undefined ||
+      intent.signalType ||
+      intent.dateRange?.from ||
+      intent.dateRange?.to,
     );
   }
   if (intent.mode === "timeline") {
@@ -440,8 +429,7 @@ export async function executeTimelineSearch(
         enrichmentStatus: lead?.enrichmentStatus,
         employmentCount: mapped.length,
       }),
-      totalExperienceYears:
-        calculatedMonths != null ? calculatedMonths / 12 : providerYears,
+      totalExperienceYears: calculatedMonths != null ? calculatedMonths / 12 : providerYears,
       providerExperienceYears: providerYears,
       calculatedExperienceMonths: calculatedMonths,
       employments: mapped,
@@ -498,9 +486,7 @@ export async function executeConnectionsSearch(
 
   if (intent.companyB?.trim()) {
     const companyB = intent.companyB.trim().toLowerCase();
-    return allResults.filter((result) =>
-      result.company.name.toLowerCase().includes(companyB),
-    );
+    return allResults.filter((result) => result.company.name.toLowerCase().includes(companyB));
   }
 
   return allResults;
@@ -625,10 +611,7 @@ export function usesCompanyJoin(intent: SearchIntent): boolean {
 }
 
 export function usesEmploymentJoin(intent: SearchIntent): boolean {
-  return (
-    intent.mode === "leads" &&
-    Boolean(intent.roles?.length || intent.seniority?.length)
-  );
+  return intent.mode === "leads" && Boolean(intent.roles?.length || intent.seniority?.length);
 }
 
 export function usesSignalJoin(intent: SearchIntent): boolean {

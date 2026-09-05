@@ -18,8 +18,4 @@ export {
   type StructuredSearchResult,
 } from "./structured-search";
 
-export {
-  runNaturalSearch,
-  NaturalSearchError,
-  type NaturalSearchOptions,
-} from "./natural-search";
+export { runNaturalSearch, NaturalSearchError, type NaturalSearchOptions } from "./natural-search";

@@ -6,7 +6,10 @@ import { normalizeDomain } from "@/server/domain/normalization/domain";
 import { normalizeTitle } from "@/server/domain/normalization/title";
 import { normalizeUrl } from "@/server/domain/normalization/url";
 import { classifyTitle } from "@/server/domain/roles/classification";
-import type { CrustdataPersonEnrichResult, CrustdataPersonExperience } from "@/server/infrastructure/connectors/types";
+import type {
+  CrustdataPersonEnrichResult,
+  CrustdataPersonExperience,
+} from "@/server/infrastructure/connectors/types";
 import type { Db } from "@/server/infrastructure/db";
 import {
   companies,
@@ -17,12 +20,7 @@ import {
   personExperienceMetrics,
 } from "@/server/infrastructure/db";
 
-export type TimelineStatus =
-  | "available"
-  | "no_history"
-  | "not_found"
-  | "redacted"
-  | "failed";
+export type TimelineStatus = "available" | "no_history" | "not_found" | "redacted" | "failed";
 
 export type PersistPersonEnrichmentInput = {
   db: Db;
@@ -92,9 +90,7 @@ async function resolveEmployerCompanyId(
     }
   }
 
-  const domain = experience.companyDomain
-    ? normalizeDomain(experience.companyDomain)
-    : null;
+  const domain = experience.companyDomain ? normalizeDomain(experience.companyDomain) : null;
   if (domain) {
     const byDomain = await entitiesRepo.findCompanyByDomain(db, domain);
     if (byDomain) {
@@ -187,12 +183,9 @@ export async function persistPersonEnrichment(
   const { db, personId, enrichResult } = input;
   const fetchedAt = input.fetchedAt ?? new Date();
   const profileUrl =
-    enrichResult.linkedinUrl ??
-    enrichResult.matchedOn ??
-    input.inputProfileUrl ??
-    null;
+    enrichResult.linkedinUrl ?? enrichResult.matchedOn ?? input.inputProfileUrl ?? null;
   const normalizedProfile = profileUrl
-    ? normalizeUrl(profileUrl)?.toLowerCase() ?? profileUrl.toLowerCase()
+    ? (normalizeUrl(profileUrl)?.toLowerCase() ?? profileUrl.toLowerCase())
     : null;
 
   if (enrichResult.crustdataPersonId || normalizedProfile) {
@@ -218,15 +211,9 @@ export async function persistPersonEnrichment(
       await db
         .update(leadCandidates)
         .set({
-          enrichmentStatus:
-            enrichResult.status === "invalid" ? "failed" : enrichResult.status,
+          enrichmentStatus: enrichResult.status === "invalid" ? "failed" : enrichResult.status,
         })
-        .where(
-          and(
-            eq(leadCandidates.personId, personId),
-            eq(leadCandidates.runId, input.runId),
-          ),
-        );
+        .where(and(eq(leadCandidates.personId, personId), eq(leadCandidates.runId, input.runId)));
     }
 
     return {
@@ -315,11 +302,7 @@ export async function persistPersonEnrichment(
     .filter((row) => row.startDate)
     .map((row) => ({
       startDate: new Date(row.startDate!),
-      endDate: row.isCurrent
-        ? fetchedAt
-        : row.endDate
-          ? new Date(row.endDate)
-          : null,
+      endDate: row.isCurrent ? fetchedAt : row.endDate ? new Date(row.endDate) : null,
       isLeadership: isLeadershipTitle(row.rawTitle),
     }));
 
@@ -377,9 +360,7 @@ export async function persistPersonEnrichment(
     await db
       .update(leadCandidates)
       .set({ enrichmentStatus: "matched" })
-      .where(
-        and(eq(leadCandidates.personId, personId), eq(leadCandidates.runId, input.runId)),
-      );
+      .where(and(eq(leadCandidates.personId, personId), eq(leadCandidates.runId, input.runId)));
   }
 
   return {

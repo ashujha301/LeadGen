@@ -20,8 +20,7 @@ export function buildLeadSummary(input: {
   externalProfile?: PersonExternalProfile | null;
 }): LeadSummary {
   const linkedinContact = input.contacts.find((contact) => contact.type === "linkedin");
-  const linkedinUrl =
-    linkedinContact?.rawValue ?? input.externalProfile?.profileUrl ?? null;
+  const linkedinUrl = linkedinContact?.rawValue ?? input.externalProfile?.profileUrl ?? null;
 
   const totalExperienceYears = input.experienceMetrics?.calculatedTotalMonths
     ? input.experienceMetrics.calculatedTotalMonths / 12

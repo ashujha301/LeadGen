@@ -1,4 +1,14 @@
-const GARBAGE_SINGLE_TOKEN = new Set(["/", "#", "-", ".", "n/a", "na", "none", "null", "undefined"]);
+const GARBAGE_SINGLE_TOKEN = new Set([
+  "/",
+  "#",
+  "-",
+  ".",
+  "n/a",
+  "na",
+  "none",
+  "null",
+  "undefined",
+]);
 
 function trimmed(value: string | null | undefined): string | null {
   if (value == null) return null;

@@ -5,12 +5,7 @@ const NON_NAME_CHARS = /[^\p{L}\p{N}\s'-]/gu;
  * Normalize a person or company name for comparison.
  */
 export function normalizeName(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(NON_NAME_CHARS, " ")
-    .replace(WHITESPACE, " ")
-    .trim();
+  return input.trim().toLowerCase().replace(NON_NAME_CHARS, " ").replace(WHITESPACE, " ").trim();
 }
 
 /**

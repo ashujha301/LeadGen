@@ -253,10 +253,7 @@ export async function updateRunProgress(
   return run;
 }
 
-export async function claimRunForProcessing(
-  db: Db,
-  runId: string,
-): Promise<SearchRun | undefined> {
+export async function claimRunForProcessing(db: Db, runId: string): Promise<SearchRun | undefined> {
   const [run] = await db
     .update(searchRuns)
     .set({
@@ -284,9 +281,7 @@ export async function completeRun(db: Db, runId: string): Promise<SearchRun | un
         stage: "completed",
       },
     })
-    .where(
-      and(eq(searchRuns.id, runId), inArray(searchRuns.status, ACTIVE_STATUSES)),
-    )
+    .where(and(eq(searchRuns.id, runId), inArray(searchRuns.status, ACTIVE_STATUSES)))
     .returning();
   return run;
 }
@@ -310,10 +305,7 @@ export async function failRunIfActive(
   return run;
 }
 
-export async function cancelRunIfActive(
-  db: Db,
-  runId: string,
-): Promise<SearchRun | undefined> {
+export async function cancelRunIfActive(db: Db, runId: string): Promise<SearchRun | undefined> {
   const [run] = await db
     .update(searchRuns)
     .set({

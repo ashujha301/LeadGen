@@ -1,9 +1,5 @@
 import { REASON_CODES, type ReasonCode } from "./reason-codes";
-import {
-  SCORE_COMPONENT_KEYS,
-  SCORE_COMPONENT_LABELS,
-  getScoreComponentMax,
-} from "./score-config";
+import { SCORE_COMPONENT_KEYS, SCORE_COMPONENT_LABELS, getScoreComponentMax } from "./score-config";
 import type { ScoreComponentResult } from "./acquisition-score";
 
 export type EvidenceInput = {
@@ -31,8 +27,10 @@ export function scoreEvidenceQuality(
 
   const sourceCount = new Set(input.evidence.map((item) => item.sourceUrl)).size;
   const avgEffective =
-    input.evidence.reduce((sum, item) => sum + clamp(item.confidence, 0, 1) * clamp(item.freshness, 0, 1), 0) /
-    input.evidence.length;
+    input.evidence.reduce(
+      (sum, item) => sum + clamp(item.confidence, 0, 1) * clamp(item.freshness, 0, 1),
+      0,
+    ) / input.evidence.length;
 
   let rawValue = avgEffective * max * 0.7;
   let reasonCode: ReasonCode = REASON_CODES.evidence.singleSource;

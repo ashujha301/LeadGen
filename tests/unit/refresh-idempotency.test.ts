@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildRefreshMetadata,
-  planRunCreation,
-} from "@/server/application/services/run-service";
+import { buildRefreshMetadata, planRunCreation } from "@/server/application/services/run-service";
 
 describe("refresh idempotency", () => {
   it("returns the existing run when the same client idempotency key is retried", () => {

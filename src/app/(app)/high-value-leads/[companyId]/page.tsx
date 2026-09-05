@@ -45,7 +45,8 @@ export default async function HighValueCompanyPage({ params }: PageProps) {
         lead,
         title: current?.rawTitle ?? null,
         linkedinUrl:
-          linkedin.find((contact) => contact.type === "linkedin")?.rawValue ?? lead.person.profileUrl,
+          linkedin.find((contact) => contact.type === "linkedin")?.rawValue ??
+          lead.person.profileUrl,
       };
     }),
   );
@@ -106,13 +107,18 @@ export default async function HighValueCompanyPage({ params }: PageProps) {
                   </TableCell>
                   <TableCell>{title ?? "—"}</TableCell>
                   <TableCell>
-                    <LinkedinCell linkedinUrl={linkedinUrl} enrichmentStatus={lead.enrichmentStatus} />
+                    <LinkedinCell
+                      linkedinUrl={linkedinUrl}
+                      enrichmentStatus={lead.enrichmentStatus}
+                    />
                   </TableCell>
                   <TableCell>
                     <Badge>{formatScore(Number(lead.finalScore))}</Badge>
                   </TableCell>
                   <TableCell>{formatPercent(Number(lead.confidence))}</TableCell>
-                  <TableCell>{lead.explanation ?? lead.roleMatchReasons?.join(", ") ?? "—"}</TableCell>
+                  <TableCell>
+                    {lead.explanation ?? lead.roleMatchReasons?.join(", ") ?? "—"}
+                  </TableCell>
                 </TableRow>
               ))
             )}

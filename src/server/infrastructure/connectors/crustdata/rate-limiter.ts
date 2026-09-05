@@ -15,10 +15,7 @@ function createLimiter(requestsPerMinute: number): Bottleneck {
   });
 }
 
-export function configureEndpointLimiter(
-  key: EndpointLimiterKey,
-  requestsPerMinute: number,
-): void {
+export function configureEndpointLimiter(key: EndpointLimiterKey, requestsPerMinute: number): void {
   limiters.set(key, createLimiter(requestsPerMinute));
 }
 

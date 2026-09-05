@@ -23,7 +23,9 @@ const FUNCTION_TITLE_TERMS: Record<FunctionToken, string[]> = {
 };
 
 /** Expand role criteria into Crustdata title substring search terms. */
-export function roleCriteriaToTitleSearchTerms(criteria: RoleCriteria | null | undefined): string[] {
+export function roleCriteriaToTitleSearchTerms(
+  criteria: RoleCriteria | null | undefined,
+): string[] {
   if (!criteria) {
     return [];
   }

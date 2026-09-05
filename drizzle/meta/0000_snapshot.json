@@ -338,12 +338,8 @@
           "name": "source_documents_run_id_search_runs_id_fk",
           "tableFrom": "source_documents",
           "tableTo": "search_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -490,12 +486,8 @@
           "name": "observations_source_document_id_source_documents_id_fk",
           "tableFrom": "observations",
           "tableTo": "source_documents",
-          "columnsFrom": [
-            "source_document_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_document_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -723,12 +715,8 @@
           "name": "company_aliases_company_id_companies_id_fk",
           "tableFrom": "company_aliases",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1012,12 +1000,8 @@
           "name": "employments_person_id_people_id_fk",
           "tableFrom": "employments",
           "tableTo": "people",
-          "columnsFrom": [
-            "person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["person_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1025,12 +1009,8 @@
           "name": "employments_company_id_companies_id_fk",
           "tableFrom": "employments",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1193,12 +1173,8 @@
           "name": "contact_points_person_id_people_id_fk",
           "tableFrom": "contact_points",
           "tableTo": "people",
-          "columnsFrom": [
-            "person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["person_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1206,12 +1182,8 @@
           "name": "contact_points_company_id_companies_id_fk",
           "tableFrom": "contact_points",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1338,12 +1310,8 @@
           "name": "business_signals_company_id_companies_id_fk",
           "tableFrom": "business_signals",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1351,12 +1319,8 @@
           "name": "business_signals_source_document_id_source_documents_id_fk",
           "tableFrom": "business_signals",
           "tableTo": "source_documents",
-          "columnsFrom": [
-            "source_document_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_document_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1685,12 +1649,8 @@
           "name": "lead_candidates_run_id_search_runs_id_fk",
           "tableFrom": "lead_candidates",
           "tableTo": "search_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1698,12 +1658,8 @@
           "name": "lead_candidates_person_id_people_id_fk",
           "tableFrom": "lead_candidates",
           "tableTo": "people",
-          "columnsFrom": [
-            "person_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["person_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1711,12 +1667,8 @@
           "name": "lead_candidates_company_id_companies_id_fk",
           "tableFrom": "lead_candidates",
           "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1825,12 +1777,8 @@
           "name": "score_components_lead_candidate_id_lead_candidates_id_fk",
           "tableFrom": "score_components",
           "tableTo": "lead_candidates",
-          "columnsFrom": [
-            "lead_candidate_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["lead_candidate_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1993,12 +1941,8 @@
           "name": "ai_calls_run_id_search_runs_id_fk",
           "tableFrom": "ai_calls",
           "tableTo": "search_runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2111,78 +2055,42 @@
     "public.ai_call_status": {
       "name": "ai_call_status",
       "schema": "public",
-      "values": [
-        "success",
-        "error",
-        "timeout",
-        "refused"
-      ]
+      "values": ["success", "error", "timeout", "refused"]
     },
     "public.ai_operation": {
       "name": "ai_operation",
       "schema": "public",
-      "values": [
-        "extract_page",
-        "parse_search_query",
-        "explain_lead"
-      ]
+      "values": ["extract_page", "parse_search_query", "explain_lead"]
     },
     "public.alias_type": {
       "name": "alias_type",
       "schema": "public",
-      "values": [
-        "name",
-        "domain"
-      ]
+      "values": ["name", "domain"]
     },
     "public.contact_type": {
       "name": "contact_type",
       "schema": "public",
-      "values": [
-        "email",
-        "phone",
-        "linkedin",
-        "other"
-      ]
+      "values": ["email", "phone", "linkedin", "other"]
     },
     "public.entity_match_decision": {
       "name": "entity_match_decision",
       "schema": "public",
-      "values": [
-        "auto_merge",
-        "review",
-        "separate"
-      ]
+      "values": ["auto_merge", "review", "separate"]
     },
     "public.extraction_status": {
       "name": "extraction_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed",
-        "failed",
-        "skipped"
-      ]
+      "values": ["pending", "in_progress", "completed", "failed", "skipped"]
     },
     "public.match_entity_type": {
       "name": "match_entity_type",
       "schema": "public",
-      "values": [
-        "company",
-        "person"
-      ]
+      "values": ["company", "person"]
     },
     "public.observation_entity_type": {
       "name": "observation_entity_type",
       "schema": "public",
-      "values": [
-        "company",
-        "person",
-        "employment",
-        "contact",
-        "signal"
-      ]
+      "values": ["company", "person", "employment", "contact", "signal"]
     },
     "public.run_status": {
       "name": "run_status",
@@ -2201,23 +2109,12 @@
     "public.source_type": {
       "name": "source_type",
       "schema": "public",
-      "values": [
-        "website",
-        "rdap",
-        "crustdata",
-        "email_verifier",
-        "manual"
-      ]
+      "values": ["website", "rdap", "crustdata", "email_verifier", "manual"]
     },
     "public.verification_status": {
       "name": "verification_status",
       "schema": "public",
-      "values": [
-        "verified",
-        "unverified",
-        "invalid",
-        "disabled"
-      ]
+      "values": ["verified", "unverified", "invalid", "disabled"]
     }
   },
   "schemas": {},

@@ -21,8 +21,8 @@ export default async function ReviewPage() {
           <h1 className="text-xl font-semibold">Entity review</h1>
         </div>
         <p className="text-sm text-muted">
-          Review ambiguous entity matches flagged during resolution. Merge and reject actions require
-          authentication and are not available in this demo.
+          Review ambiguous entity matches flagged during resolution. Merge and reject actions
+          require authentication and are not available in this demo.
         </p>
       </header>
 

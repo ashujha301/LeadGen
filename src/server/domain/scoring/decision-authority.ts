@@ -1,10 +1,6 @@
 import { TARGET_ROLES } from "@/shared/config";
 import { REASON_CODES, type ReasonCode } from "./reason-codes";
-import {
-  SCORE_COMPONENT_KEYS,
-  SCORE_COMPONENT_LABELS,
-  getScoreComponentMax,
-} from "./score-config";
+import { SCORE_COMPONENT_KEYS, SCORE_COMPONENT_LABELS, getScoreComponentMax } from "./score-config";
 import type { ScoreComponentResult } from "./acquisition-score";
 
 export type DecisionAuthorityInput = {

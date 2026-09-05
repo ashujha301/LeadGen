@@ -1,12 +1,4 @@
-import {
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { extractionStatusEnum, sourceTypeEnum } from "./enums";
 import { timestamps } from "./helpers";
@@ -28,9 +20,7 @@ export const sourceDocuments = pgTable(
     excerpt: text("excerpt"),
     pageHtml: text("page_html"),
     fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: "date" }),
-    extractionStatus: extractionStatusEnum("extraction_status")
-      .notNull()
-      .default("pending"),
+    extractionStatus: extractionStatusEnum("extraction_status").notNull().default("pending"),
     ...timestamps,
   },
   (table) => [

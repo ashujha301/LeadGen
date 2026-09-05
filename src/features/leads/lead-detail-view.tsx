@@ -40,7 +40,11 @@ export function LeadDetailView({ lead, graph, headerSlot }: LeadDetailViewProps)
       </header>
 
       <div className="rounded-md border border-[var(--border)] bg-surface p-4">
-        <LeadScore score={lead.score} confidence={lead.confidence} contactability={lead.contactability} />
+        <LeadScore
+          score={lead.score}
+          confidence={lead.confidence}
+          contactability={lead.contactability}
+        />
         <p className="mt-4 text-sm leading-relaxed text-muted">{lead.explanation}</p>
       </div>
 
@@ -53,14 +57,20 @@ export function LeadDetailView({ lead, graph, headerSlot }: LeadDetailViewProps)
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="graph">Graph</TabsTrigger>
         </TabsList>
-        <TabsContent value="breakdown" className="rounded-md border border-[var(--border)] bg-surface p-4">
+        <TabsContent
+          value="breakdown"
+          className="rounded-md border border-[var(--border)] bg-surface p-4"
+        >
           <ScoreBreakdown components={lead.scoreComponents} />
           {lead.businessSignals.length > 0 && (
             <div className="mt-6 space-y-2">
               <h3 className="text-sm font-medium">Business signals</h3>
               <ul className="space-y-1 text-sm">
                 {lead.businessSignals.map((signal) => (
-                  <li key={`${signal.type}-${signal.value}`} className="flex justify-between text-muted">
+                  <li
+                    key={`${signal.type}-${signal.value}`}
+                    className="flex justify-between text-muted"
+                  >
                     <span>
                       {signal.type}: {signal.value}
                     </span>
@@ -71,10 +81,16 @@ export function LeadDetailView({ lead, graph, headerSlot }: LeadDetailViewProps)
             </div>
           )}
         </TabsContent>
-        <TabsContent value="evidence" className="rounded-md border border-[var(--border)] bg-surface p-4">
+        <TabsContent
+          value="evidence"
+          className="rounded-md border border-[var(--border)] bg-surface p-4"
+        >
           <EvidencePanel evidence={lead.evidence} />
         </TabsContent>
-        <TabsContent value="timeline" className="rounded-md border border-[var(--border)] bg-surface p-4">
+        <TabsContent
+          value="timeline"
+          className="rounded-md border border-[var(--border)] bg-surface p-4"
+        >
           <EmploymentTimeline
             employments={lead.employmentHistory}
             timelineStatus={lead.timelineStatus}
@@ -82,8 +98,15 @@ export function LeadDetailView({ lead, graph, headerSlot }: LeadDetailViewProps)
             providerExperienceYears={lead.providerExperienceYears}
           />
         </TabsContent>
-        <TabsContent value="graph" className="rounded-md border border-[var(--border)] bg-surface p-4">
-          {graph ? <RelationshipGraph graph={graph} /> : <p className="text-sm text-muted">Graph unavailable.</p>}
+        <TabsContent
+          value="graph"
+          className="rounded-md border border-[var(--border)] bg-surface p-4"
+        >
+          {graph ? (
+            <RelationshipGraph graph={graph} />
+          ) : (
+            <p className="text-sm text-muted">Graph unavailable.</p>
+          )}
         </TabsContent>
       </Tabs>
     </div>

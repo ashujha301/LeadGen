@@ -19,7 +19,12 @@ export type ExtractPageInput = {
 };
 
 export type ExtractPageResult =
-  | { status: "success"; data: NormalizedPageExtraction; responseId: string | null; durationMs: number }
+  | {
+      status: "success";
+      data: NormalizedPageExtraction;
+      responseId: string | null;
+      durationMs: number;
+    }
   | { status: "disabled"; reason: string }
   | { status: "error"; error: string; durationMs: number };
 

@@ -46,6 +46,7 @@ describe("API route contract characterization", () => {
         "v1/people/[personId]",
         "v1/runs",
         "v1/runs/[runId]",
+        "v1/runs/[runId]/cancel",
         "v1/runs/[runId]/events",
         "v1/runs/[runId]/leads",
         "v1/search/natural",
@@ -63,6 +64,7 @@ describe("API route contract characterization", () => {
       "scoring",
       "completed",
       "failed",
+      "canceled",
     ]);
   });
 

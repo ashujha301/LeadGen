@@ -10,7 +10,10 @@ export function buildCompanyEnrichSourceKey(normalizedDomain: string): string {
   return `company_enrich:${normalizedDomain}`;
 }
 
-export function buildPersonSearchSourceKey(normalizedDomain: string, criteriaHash?: string): string {
+export function buildPersonSearchSourceKey(
+  normalizedDomain: string,
+  criteriaHash?: string,
+): string {
   const hash = criteriaHash ?? "default";
   return `person_search:${normalizedDomain}:${hash}`;
 }
@@ -28,5 +31,8 @@ export function buildEmailVerifySourceKey(normalizedEmail: string): string {
 }
 
 export function hashRoleCriteria(criteria: unknown): string {
-  return createHash("sha256").update(JSON.stringify(criteria ?? {})).digest("hex").slice(0, 16);
+  return createHash("sha256")
+    .update(JSON.stringify(criteria ?? {}))
+    .digest("hex")
+    .slice(0, 16);
 }

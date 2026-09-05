@@ -8,11 +8,7 @@ import { LeadDetailView } from "@/features/leads/lead-detail-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeadDetailPage({
-  params,
-}: {
-  params: Promise<{ leadId: string }>;
-}) {
+export default async function LeadDetailPage({ params }: { params: Promise<{ leadId: string }> }) {
   const user = await requireSession();
   const { leadId } = await params;
   const lead = await leadService.getLead(leadId, user.id);

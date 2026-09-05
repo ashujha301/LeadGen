@@ -1,9 +1,6 @@
 import { allowedSearchFields } from "../schemas/search-intent";
 
-export function buildParseSearchQueryPrompt(input: {
-  query: string;
-  runId?: string;
-}): string {
+export function buildParseSearchQueryPrompt(input: { query: string; runId?: string }): string {
   return [
     "Convert the natural-language search request into a SearchIntent JSON object.",
     "SearchIntent is a discriminated union with required field mode: leads | timeline | connections.",

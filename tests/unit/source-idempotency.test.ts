@@ -74,8 +74,8 @@ describe("observation fingerprints", () => {
       rawValue: "Jane Doe",
       evidenceSpan: null,
     };
-    expect(
-      buildObservationFingerprint({ ...base, normalizedValue: "jane doe" }),
-    ).not.toBe(buildObservationFingerprint({ ...base, normalizedValue: "john doe" }));
+    expect(buildObservationFingerprint({ ...base, normalizedValue: "jane doe" })).not.toBe(
+      buildObservationFingerprint({ ...base, normalizedValue: "john doe" }),
+    );
   });
 });

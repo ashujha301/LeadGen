@@ -7,10 +7,7 @@ export function hasEmployeeRangeBounds(range?: EmployeeRangeBounds): boolean {
   return range?.min != null || range?.max != null;
 }
 
-export function isEmployeeCountInRange(
-  count: number,
-  range: EmployeeRangeBounds,
-): boolean {
+export function isEmployeeCountInRange(count: number, range: EmployeeRangeBounds): boolean {
   if (range.min != null && count < range.min) {
     return false;
   }

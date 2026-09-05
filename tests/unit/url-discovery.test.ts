@@ -67,9 +67,9 @@ describe("shouldSkipDiscoveredUrl", () => {
   });
 
   it("rejects linkedin follow links", () => {
-    expect(
-      shouldSkipDiscoveredUrl("https://www.linkedin.com/company/acme/follow?trk=abc"),
-    ).toBe(true);
+    expect(shouldSkipDiscoveredUrl("https://www.linkedin.com/company/acme/follow?trk=abc")).toBe(
+      true,
+    );
   });
 
   it("allows normal internal pages", () => {

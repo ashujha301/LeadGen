@@ -26,7 +26,9 @@ export class ApiClientError extends Error {
   }
 }
 
-async function parseResponse<T>(response: Response): Promise<{ data: T; nextCursor?: string | null }> {
+async function parseResponse<T>(
+  response: Response,
+): Promise<{ data: T; nextCursor?: string | null }> {
   const body = (await response.json()) as ApiSuccess<T> | { error: ApiError };
 
   if (!response.ok) {
@@ -46,7 +48,11 @@ async function parseResponse<T>(response: Response): Promise<{ data: T; nextCurs
 export const apiClient = {
   async createRun(payload: {
     domain: string;
-    icp?: { industries?: string[]; locations?: string[]; employeeRange?: { min?: number; max?: number } };
+    icp?: {
+      industries?: string[];
+      locations?: string[];
+      employeeRange?: { min?: number; max?: number };
+    };
     roleCriteria?: RoleCriteria;
     targetRoles?: string[];
   }) {
@@ -125,17 +131,19 @@ export const apiClient = {
 
   async getEntityMatches() {
     const res = await fetch(`${API_BASE}/v1/entity-matches`);
-    return (await parseResponse<
-      Array<{
-        id: string;
-        entityType: string;
-        candidateA: { id: string; label: string };
-        candidateB: { id: string; label: string };
-        matchScore: number;
-        reasons: string[];
-        decision: string;
-      }>
-    >(res)).data;
+    return (
+      await parseResponse<
+        Array<{
+          id: string;
+          entityType: string;
+          candidateA: { id: string; label: string };
+          candidateB: { id: string; label: string };
+          matchScore: number;
+          reasons: string[];
+          decision: string;
+        }>
+      >(res)
+    ).data;
   },
 
   exportRunUrl(runId: string) {

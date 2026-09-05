@@ -4,7 +4,10 @@ import {
   isUsablePhone,
   isUsableProfileUrl,
   sanitizePersonContacts,
+  sanitizePersonDraftContacts,
 } from "@/server/domain/entity-resolution/contact-identity";
+import { normalizeProfileUrl } from "@/server/domain/entity-resolution/mention-validation";
+import { profileIdentityKey } from "@/server/domain/entity-resolution/person-drafts";
 
 describe("contact identity guards", () => {
   it("rejects slash, hash, empty, and relative profile urls", () => {
@@ -43,5 +46,34 @@ describe("contact identity guards", () => {
         profileUrl: "https://linkedin.com/in/jane",
       }),
     ).toEqual({ profileUrl: "https://linkedin.com/in/jane" });
+  });
+
+  it("profileIdentityKey returns null for slash urls", () => {
+    expect(profileIdentityKey("/")).toBeNull();
+    expect(profileIdentityKey("https://linkedin.com/in/jane")).toBe("linkedin:/in/jane");
+  });
+
+  it("normalizeProfileUrl returns null for slash", () => {
+    expect(normalizeProfileUrl("/")).toBeNull();
+    expect(normalizeProfileUrl("https://linkedin.com/in/jane")).toContain("linkedin.com/in/jane");
+  });
+
+  it("sanitizePersonDraftContacts clears garbage identity fields on a draft-like object", () => {
+    const cleaned = sanitizePersonDraftContacts({
+      name: "Mr. Arindam Ghosh",
+      email: "/",
+      phone: "/",
+      profileUrl: "/",
+      title: "Founder",
+    });
+    expect(cleaned.email).toBeUndefined();
+    expect(cleaned.phone).toBeUndefined();
+    expect(cleaned.profileUrl).toBeUndefined();
+    expect(cleaned.title).toBe("Founder");
+  });
+
+  it("policy: only usable profile urls are eligible for global person lookup", () => {
+    expect(isUsableProfileUrl("/")).toBe(false);
+    expect(isUsableProfileUrl("https://linkedin.com/in/abhishek-ksingh")).toBe(true);
   });
 });

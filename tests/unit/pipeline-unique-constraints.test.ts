@@ -116,6 +116,54 @@ describe("person draft identity dedupe", () => {
     expect(drafts).toHaveLength(2);
   });
 
+  it("does not collapse unrelated drafts that only share garbage profile urls", () => {
+    const drafts = dedupePersonDrafts([
+      {
+        name: "Mr. Arindam Ghosh",
+        normalizedName: "mr arindam ghosh",
+        title: "Independent Director",
+        profileUrl: "/",
+        confidence: 0.95,
+        sourceDocumentId: "navi",
+        subjectKey: "navi-1",
+      },
+      {
+        name: "Abhishek Kumar Singh",
+        normalizedName: "abhishek kumar singh",
+        title: "Founder",
+        profileUrl: "/",
+        confidence: 0.9,
+        sourceDocumentId: "devvine",
+        subjectKey: "devvine-1",
+      },
+    ]);
+
+    expect(drafts).toHaveLength(2);
+  });
+
+  it("does not collapse drafts that only share garbage emails", () => {
+    const drafts = dedupePersonDrafts([
+      {
+        name: "Ada Lovelace",
+        normalizedName: "ada lovelace",
+        email: "/",
+        confidence: 0.8,
+        sourceDocumentId: "a",
+        subjectKey: "a-1",
+      },
+      {
+        name: "Grace Hopper",
+        normalizedName: "grace hopper",
+        email: "/",
+        confidence: 0.8,
+        sourceDocumentId: "b",
+        subjectKey: "b-1",
+      },
+    ]);
+
+    expect(drafts).toHaveLength(2);
+  });
+
   it("finds existing people by high name similarity at the same company", () => {
     expect(
       findExistingPersonByNameAtCompany(

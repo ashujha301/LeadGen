@@ -1,6 +1,11 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
 
 import { pickCanonicalLeadPerPerson } from "@/server/domain/leads/hvl-person-dedupe";
+import {
+  computeLeadNeighbors,
+  sortHighValueLeadsByScoreThenId,
+  type HighValueLeadNavigation,
+} from "@/server/domain/leads/hvl-navigation";
 import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
 
 import type { Db } from "../client";
@@ -12,6 +17,8 @@ import {
   type Company,
   type LeadCandidate,
 } from "../schema/index";
+
+export type { HighValueLeadNavigation };
 
 export type HighValueCompanySummary = Company & {
   qualifyingLeadCount: number;
@@ -110,8 +117,8 @@ export async function getHighValueLeadsByCompanyId(
     },
   });
 
-  let deduped = pickCanonicalLeadPerPerson(leads as HighValueLeadRow[]).sort(
-    (a, b) => Number(b.finalScore) - Number(a.finalScore) || b.id.localeCompare(a.id),
+  let deduped = sortHighValueLeadsByScoreThenId(
+    pickCanonicalLeadPerPerson(leads as HighValueLeadRow[]),
   );
 
   if (options.cursor) {
@@ -137,6 +144,18 @@ export async function getHighValueLeadsByCompanyId(
     leads: page,
     nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
   };
+}
+
+export async function getHighValueLeadNavigation(
+  db: Db,
+  companyId: string,
+  leadId: string,
+): Promise<HighValueLeadNavigation | null> {
+  const { leads } = await getHighValueLeadsByCompanyId(db, companyId, { limit: 10_000 });
+  return computeLeadNeighbors(
+    leads.map((lead) => lead.id),
+    leadId,
+  );
 }
 
 export async function getHighValueCompanyById(

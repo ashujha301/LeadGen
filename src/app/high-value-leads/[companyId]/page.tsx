@@ -92,7 +92,10 @@ export default async function HighValueCompanyPage({ params }: PageProps) {
               leadRows.map(({ lead, title, linkedinUrl }) => (
                 <TableRow key={lead.id}>
                   <TableCell>
-                    <Link href={`/leads/${lead.id}`} className="font-medium text-accent hover:underline">
+                    <Link
+                      href={`/high-value-leads/${companyId}/leads/${lead.id}`}
+                      className="font-medium text-accent hover:underline"
+                    >
                       {lead.person.name}
                     </Link>
                   </TableCell>

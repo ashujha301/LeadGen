@@ -7,13 +7,13 @@ CONFIG_FILE="${CONFIG_FILE:-${APP_DIR}/config.env}"
 OUTPUT_FILE="${OUTPUT_FILE:-${APP_DIR}/runtime.env}"
 DOCKERHUB_TOKEN_FILE="${DOCKERHUB_TOKEN_FILE:-${APP_DIR}/.dockerhub-pull-token}"
 
+# High-value credentials must come from Secret Manager (6-slot budget).
+# AUTH_SECRET and IP_HASH_SALT are allowed in config.env to stay within that limit.
 FORBIDDEN_CONFIG_KEYS=(
   DATABASE_URL
   OPENAI_API_KEY
   CRUSTDATA_API_KEY
   EMAIL_VERIFIER_API_KEY
-  IP_HASH_SALT
-  AUTH_SECRET
   GOOGLE_CLIENT_ID
   GOOGLE_CLIENT_SECRET
   DOCKERHUB_PULL_TOKEN
@@ -53,13 +53,17 @@ set +a
 
 ENABLE_EMAIL_VERIFIER="${ENABLE_EMAIL_VERIFIER:-false}"
 
+if [[ -z "${AUTH_SECRET:-}" || -z "${IP_HASH_SALT:-}" ]]; then
+  echo "[load-secrets] ${CONFIG_FILE} must set AUTH_SECRET and IP_HASH_SALT" >&2
+  exit 1
+fi
+
 DATABASE_URL="$(read_secret leadgen-demo-database-url)"
 OPENAI_API_KEY="$(read_secret leadgen-demo-openai-api-key)"
 CRUSTDATA_API_KEY="$(read_secret leadgen-demo-crustdata-api-key)"
-IP_HASH_SALT="$(read_secret leadgen-demo-ip-hash-salt)"
 
-if [[ -z "${DATABASE_URL}" || -z "${OPENAI_API_KEY}" || -z "${CRUSTDATA_API_KEY}" || -z "${IP_HASH_SALT}" ]]; then
-  echo "[load-secrets] Required secrets are missing (DATABASE_URL, OPENAI_API_KEY, CRUSTDATA_API_KEY, IP_HASH_SALT)" >&2
+if [[ -z "${DATABASE_URL}" || -z "${OPENAI_API_KEY}" || -z "${CRUSTDATA_API_KEY}" ]]; then
+  echo "[load-secrets] Required secrets are missing (DATABASE_URL, OPENAI_API_KEY, CRUSTDATA_API_KEY)" >&2
   exit 1
 fi
 
@@ -80,11 +84,10 @@ if [[ -z "${DOCKERHUB_PULL_TOKEN}" ]]; then
   exit 1
 fi
 
-AUTH_SECRET="$(read_secret leadgen-demo-auth-secret)"
 GOOGLE_CLIENT_ID="$(read_secret leadgen-demo-google-client-id)"
 GOOGLE_CLIENT_SECRET="$(read_secret leadgen-demo-google-client-secret)"
-if [[ -z "${AUTH_SECRET}" || -z "${GOOGLE_CLIENT_ID}" || -z "${GOOGLE_CLIENT_SECRET}" ]]; then
-  echo "[load-secrets] Missing auth secrets (AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)" >&2
+if [[ -z "${GOOGLE_CLIENT_ID}" || -z "${GOOGLE_CLIENT_SECRET}" ]]; then
+  echo "[load-secrets] Missing Google OAuth secrets (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)" >&2
   exit 1
 fi
 
@@ -95,14 +98,12 @@ cleanup() {
 trap cleanup EXIT
 
 {
-  # Preserve non-secret config first.
+  # Preserve config.env first (includes AUTH_SECRET + IP_HASH_SALT).
   grep -vE '^[[:space:]]*(#|$)' "${CONFIG_FILE}" || true
 
   printf 'DATABASE_URL=%s\n' "${DATABASE_URL}"
   printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
   printf 'CRUSTDATA_API_KEY=%s\n' "${CRUSTDATA_API_KEY}"
-  printf 'IP_HASH_SALT=%s\n' "${IP_HASH_SALT}"
-  printf 'AUTH_SECRET=%s\n' "${AUTH_SECRET}"
   printf 'GOOGLE_CLIENT_ID=%s\n' "${GOOGLE_CLIENT_ID}"
   printf 'GOOGLE_CLIENT_SECRET=%s\n' "${GOOGLE_CLIENT_SECRET}"
   if [[ -n "${EMAIL_VERIFIER_API_KEY}" ]]; then

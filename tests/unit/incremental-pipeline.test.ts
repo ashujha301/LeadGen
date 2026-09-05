@@ -126,8 +126,8 @@ describe("incremental pipeline domain modules", () => {
     expect(
       qualifiesAsHighValueLead({
         scoreVersion: 2,
-        roleMatchFinal: true,
-        roleMatch: true,
+        roleMatchFinal: false,
+        roleMatch: false,
         finalScore: HIGH_VALUE_LEAD_THRESHOLDS.minScore,
         confidence: HIGH_VALUE_LEAD_THRESHOLDS.minConfidence,
         isStale: false,

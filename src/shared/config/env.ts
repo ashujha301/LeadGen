@@ -1,10 +1,22 @@
 import { z } from "zod";
 
+/** Placeholder only for Next.js `phase-production-build` page-data collection. */
+export const BUILD_PLACEHOLDER_DATABASE_URL = "postgresql://build:build@127.0.0.1:5432/build";
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url().default("http://localhost:3000"),
   PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.string().min(1),
+  // Required at runtime; during `next build`, Next sets NEXT_PHASE and we allow a placeholder.
+  DATABASE_URL: z.preprocess((value) => {
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return BUILD_PLACEHOLDER_DATABASE_URL;
+    }
+    return value;
+  }, z.string().min(1)),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-5.4-mini"),
   OPENAI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(2000),

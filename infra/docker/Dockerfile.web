@@ -15,6 +15,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN mkdir -p public
+# Placeholder only for `next build` page-data collection; runtime injects real secrets.
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build"
 RUN pnpm build:web
 
 FROM node:24-bookworm-slim AS runner

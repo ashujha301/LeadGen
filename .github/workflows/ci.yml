@@ -65,3 +65,6 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+          # Placeholder for Next.js page-data collection; not used to connect.
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build

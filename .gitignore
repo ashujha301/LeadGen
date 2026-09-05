@@ -39,7 +39,10 @@ Thumbs.db
 *.tfstate
 *.tfstate.*
 .terraform/
-.terraform.lock.hcl
+*.tfvars
+!*.tfvars.example
+*.tfplan
+tfplan
 infra/terraform/environments/demo/backend.hcl
 
 # Docker

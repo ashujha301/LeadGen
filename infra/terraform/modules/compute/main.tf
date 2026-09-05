@@ -26,12 +26,9 @@ resource "google_compute_instance" "vm" {
   }
 
   metadata = {
-    enable-oslogin = "TRUE"
+    enable-oslogin         = "TRUE"
+    block-project-ssh-keys = "TRUE"
   }
-
-  metadata_startup_script = templatefile("${path.module}/startup.sh.tftpl", {
-    artifact_registry_host = var.artifact_registry_host
-  })
 
   shielded_instance_config {
     enable_vtpm                 = true

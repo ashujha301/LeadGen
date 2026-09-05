@@ -1,56 +1,110 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/run/leadgen-demo}"
+APP_DIR="${APP_DIR:-/opt/leadgen}"
 PROJECT_ID="${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}"
+CONFIG_FILE="${CONFIG_FILE:-${APP_DIR}/config.env}"
 OUTPUT_FILE="${OUTPUT_FILE:-${APP_DIR}/runtime.env}"
-TMP_FILE="$(mktemp)"
+DOCKERHUB_TOKEN_FILE="${DOCKERHUB_TOKEN_FILE:-${APP_DIR}/.dockerhub-pull-token}"
 
-declare -A SECRET_MAP=(
-  [DATABASE_URL]="leadgen-demo-database-url"
-  [OPENAI_API_KEY]="leadgen-demo-openai-api-key"
-  [CRUSTDATA_API_KEY]="leadgen-demo-crustdata-api-key"
-  [EMAIL_VERIFIER_API_KEY]="leadgen-demo-email-verifier-api-key"
-  [IP_HASH_SALT]="leadgen-demo-ip-hash-salt"
+FORBIDDEN_CONFIG_KEYS=(
+  DATABASE_URL
+  OPENAI_API_KEY
+  CRUSTDATA_API_KEY
+  EMAIL_VERIFIER_API_KEY
+  IP_HASH_SALT
+  DOCKERHUB_PULL_TOKEN
+  DOCKERHUB_PASSWORD
+  DOCKERHUB_TOKEN
 )
 
-mkdir -p "$(dirname "${OUTPUT_FILE}")"
-: > "${TMP_FILE}"
+if [[ ! -f "${CONFIG_FILE}" ]]; then
+  echo "[load-secrets] Missing config file at ${CONFIG_FILE}" >&2
+  exit 1
+fi
 
-for env_key in "${!SECRET_MAP[@]}"; do
-  secret_id="${SECRET_MAP[${env_key}]}"
-  if ! value="$(gcloud secrets versions access latest \
+while IFS= read -r line || [[ -n "${line}" ]]; do
+  [[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+  key="${line%%=*}"
+  key="${key%"${key##*[![:space:]]}"}"
+  key="${key#"${key%%[![:space:]]*}"}"
+  for forbidden in "${FORBIDDEN_CONFIG_KEYS[@]}"; do
+    if [[ "${key}" == "${forbidden}" ]]; then
+      echo "[load-secrets] Rejected: ${CONFIG_FILE} must not contain secret key ${key}" >&2
+      exit 1
+    fi
+  done
+done < "${CONFIG_FILE}"
+
+read_secret() {
+  local secret_id="$1"
+  gcloud secrets versions access latest \
     --secret="${secret_id}" \
-    --project="${PROJECT_ID}" 2>/dev/null)"; then
-    echo "[load-secrets] Skipping missing secret ${secret_id}" >&2
-    continue
+    --project="${PROJECT_ID}"
+}
+
+# shellcheck disable=SC1090
+set -a
+source "${CONFIG_FILE}"
+set +a
+
+ENABLE_EMAIL_VERIFIER="${ENABLE_EMAIL_VERIFIER:-false}"
+
+DATABASE_URL="$(read_secret leadgen-demo-database-url)"
+OPENAI_API_KEY="$(read_secret leadgen-demo-openai-api-key)"
+CRUSTDATA_API_KEY="$(read_secret leadgen-demo-crustdata-api-key)"
+IP_HASH_SALT="$(read_secret leadgen-demo-ip-hash-salt)"
+
+if [[ -z "${DATABASE_URL}" || -z "${OPENAI_API_KEY}" || -z "${CRUSTDATA_API_KEY}" || -z "${IP_HASH_SALT}" ]]; then
+  echo "[load-secrets] Required secrets are missing (DATABASE_URL, OPENAI_API_KEY, CRUSTDATA_API_KEY, IP_HASH_SALT)" >&2
+  exit 1
+fi
+
+EMAIL_VERIFIER_API_KEY=""
+if EMAIL_VERIFIER_API_KEY="$(read_secret leadgen-demo-email-verifier-api-key 2>/dev/null)"; then
+  :
+elif [[ "${ENABLE_EMAIL_VERIFIER}" == "true" ]]; then
+  echo "[load-secrets] EMAIL_VERIFIER_API_KEY is required when ENABLE_EMAIL_VERIFIER=true" >&2
+  exit 1
+else
+  echo "[load-secrets] Email verifier secret unavailable; continuing with ENABLE_EMAIL_VERIFIER=false" >&2
+  EMAIL_VERIFIER_API_KEY=""
+fi
+
+DOCKERHUB_PULL_TOKEN="$(read_secret leadgen-demo-dockerhub-pull-token)"
+if [[ -z "${DOCKERHUB_PULL_TOKEN}" ]]; then
+  echo "[load-secrets] Missing Docker Hub pull token secret" >&2
+  exit 1
+fi
+
+TMP_FILE="$(mktemp "${APP_DIR}/.runtime.env.XXXXXX")"
+cleanup() {
+  rm -f "${TMP_FILE}"
+}
+trap cleanup EXIT
+
+{
+  # Preserve non-secret config first.
+  grep -vE '^[[:space:]]*(#|$)' "${CONFIG_FILE}" || true
+
+  printf 'DATABASE_URL=%s\n' "${DATABASE_URL}"
+  printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
+  printf 'CRUSTDATA_API_KEY=%s\n' "${CRUSTDATA_API_KEY}"
+  printf 'IP_HASH_SALT=%s\n' "${IP_HASH_SALT}"
+  if [[ -n "${EMAIL_VERIFIER_API_KEY}" ]]; then
+    printf 'EMAIL_VERIFIER_API_KEY=%s\n' "${EMAIL_VERIFIER_API_KEY}"
   fi
-  printf '%s=%q\n' "${env_key}" "${value}" >> "${TMP_FILE}"
-done
+} > "${TMP_FILE}"
 
-cat >> "${TMP_FILE}" <<EOF
-NODE_ENV=production
-APP_URL=${APP_URL:-http://127.0.0.1}
-PORT=3000
-OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.4-mini}
-OPENAI_MAX_OUTPUT_TOKENS=${OPENAI_MAX_OUTPUT_TOKENS:-2000}
-OPENAI_TIMEOUT_MS=${OPENAI_TIMEOUT_MS:-45000}
-ENABLE_CRUSTDATA=${ENABLE_CRUSTDATA:-false}
-ENABLE_EMAIL_VERIFIER=${ENABLE_EMAIL_VERIFIER:-false}
-CRAWL_MAX_PAGES=${CRAWL_MAX_PAGES:-10}
-CRAWL_MAX_DEPTH=${CRAWL_MAX_DEPTH:-2}
-CRAWL_CONCURRENCY=${CRAWL_CONCURRENCY:-1}
-CRAWL_TIMEOUT_MS=${CRAWL_TIMEOUT_MS:-90000}
-RAW_DATA_RETENTION_DAYS=${RAW_DATA_RETENTION_DAYS:-7}
-PUBLIC_RUN_LIMIT_PER_IP_DAY=${PUBLIC_RUN_LIMIT_PER_IP_DAY:-3}
-PUBLIC_GLOBAL_RUN_LIMIT_DAY=${PUBLIC_GLOBAL_RUN_LIMIT_DAY:-50}
-PUBLIC_ACTIVE_RUNS_PER_IP=${PUBLIC_ACTIVE_RUNS_PER_IP:-1}
-LOG_LEVEL=${LOG_LEVEL:-info}
-TRUSTED_PROXY_HOPS=${TRUSTED_PROXY_HOPS:-1}
-PLAYWRIGHT_HEADLESS=true
-WORKER_CONCURRENCY=1
-EOF
+install -o root -g root -m 0600 "${TMP_FILE}" "${OUTPUT_FILE}"
 
-install -m 600 "${TMP_FILE}" "${OUTPUT_FILE}"
-rm -f "${TMP_FILE}"
-echo "[load-secrets] Wrote ${OUTPUT_FILE}"
+umask 077
+printf '%s' "${DOCKERHUB_PULL_TOKEN}" > "${DOCKERHUB_TOKEN_FILE}"
+chmod 0600 "${DOCKERHUB_TOKEN_FILE}"
+chown root:root "${DOCKERHUB_TOKEN_FILE}" 2>/dev/null || true
+
+# Avoid leaving secret material in the shell environment of callers that source this script.
+unset DATABASE_URL OPENAI_API_KEY CRUSTDATA_API_KEY EMAIL_VERIFIER_API_KEY IP_HASH_SALT DOCKERHUB_PULL_TOKEN
+
+echo "[load-secrets] Wrote ${OUTPUT_FILE} (secrets not logged)"
+echo "[load-secrets] Docker Hub pull token stored at ${DOCKERHUB_TOKEN_FILE}"

@@ -1,7 +1,10 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/server/worker/index.ts"],
+  entry: {
+    index: "src/server/worker/index.ts",
+    migrate: "src/server/infrastructure/db/migrate.ts",
+  },
   outDir: "dist/worker",
   format: ["esm"],
   target: "node24",
@@ -22,6 +25,7 @@ export default defineConfig({
     "openai",
     "drizzle-orm",
     "drizzle-orm/node-postgres",
+    "drizzle-orm/node-postgres/migrator",
     "drizzle-orm/pg-core",
     "next",
     "react",

@@ -32,10 +32,6 @@ variable "runtime_service_account_email" {
   type = string
 }
 
-variable "artifact_registry_host" {
-  type = string
-}
-
 variable "labels" {
   type    = map(string)
   default = {}

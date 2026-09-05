@@ -17,17 +17,6 @@ module "network" {
   region      = var.region
 }
 
-module "registry" {
-  source = "../../modules/registry"
-
-  project_id              = var.project_id
-  region                  = var.region
-  repository_id           = var.artifact_repository_id
-  retention_count         = var.artifact_retention_count
-  untagged_retention_days = var.artifact_untagged_retention_days
-  labels                  = local.labels
-}
-
 module "iam" {
   source = "../../modules/iam"
 
@@ -36,6 +25,7 @@ module "iam" {
   repository_owner   = var.repository_owner
   repository_name    = var.repository_name
   allowed_branch_ref = var.allowed_branch_ref
+  admin_principal    = var.admin_principal
 }
 
 module "compute" {
@@ -49,8 +39,7 @@ module "compute" {
   static_ip_address             = module.network.static_ip_address
   network_tag                   = module.network.network_tag
   runtime_service_account_email = module.iam.runtime_service_account_email
-  artifact_registry_host        = "${var.region}-docker.pkg.dev"
   labels                        = local.labels
 
-  depends_on = [module.network, module.iam, module.registry]
+  depends_on = [module.network, module.iam]
 }

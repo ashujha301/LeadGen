@@ -1,20 +1,33 @@
 name: leadgen-demo
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   web:
     image: ${WEB_IMAGE:?WEB_IMAGE is required}
     container_name: leadgen-web
     restart: unless-stopped
     env_file:
-      - ${RUNTIME_ENV_FILE:-/run/leadgen-demo/runtime.env}
+      - ${RUNTIME_ENV_FILE:-/opt/leadgen/runtime.env}
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
     ports:
       - "127.0.0.1:3000:3000"
+    logging: *default-logging
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -24,17 +37,27 @@ services:
     image: ${WORKER_IMAGE:?WORKER_IMAGE is required}
     container_name: leadgen-worker
     restart: unless-stopped
+    init: true
+    ipc: host
     env_file:
-      - ${RUNTIME_ENV_FILE:-/run/leadgen-demo/runtime.env}
+      - ${RUNTIME_ENV_FILE:-/opt/leadgen/runtime.env}
     environment:
       NODE_ENV: production
       PLAYWRIGHT_HEADLESS: "true"
-      WORKER_CONCURRENCY: "1"
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-1}
+      WORKER_HEARTBEAT_PATH: /tmp/leadgen-worker-heartbeat
     security_opt:
-      - seccomp=${SECCOMP_PATH:-/run/leadgen-demo/seccomp.json}
+      - seccomp=${SECCOMP_PATH:-/opt/leadgen/seccomp.json}
     shm_size: "1gb"
+    logging: *default-logging
     healthcheck:
-      test: ["CMD", "node", "-e", "process.exit(0)"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "const fs=require('fs');const p=process.env.WORKER_HEARTBEAT_PATH||'/tmp/leadgen-worker-heartbeat';const age=Date.now()-Number(fs.readFileSync(p,'utf8'));process.exit(Number.isFinite(age)&&age<60000?0:1)",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -42,9 +65,13 @@ services:
 
   migrate:
     profiles: ["migrate"]
-    image: ${WEB_IMAGE:?WEB_IMAGE is required}
+    image: ${WORKER_IMAGE:?WORKER_IMAGE is required}
     container_name: leadgen-migrate
     env_file:
-      - ${RUNTIME_ENV_FILE:-/run/leadgen-demo/runtime.env}
-    entrypoint: ["node", "-e", "console.log('Migration placeholder: run drizzle-kit migrate from deploy host')"]
+      - ${RUNTIME_ENV_FILE:-/opt/leadgen/runtime.env}
+    environment:
+      NODE_ENV: production
+      DRIZZLE_MIGRATIONS_FOLDER: /app/drizzle
+    command: ["node", "dist/worker/migrate.js"]
     restart: "no"
+    logging: *default-logging

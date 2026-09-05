@@ -100,7 +100,9 @@ export const GET = withRequestGuard(async (request, requestId, clientKey) => {
 
             if (
               run &&
-              (run.status === "completed" || run.status === "failed" || run.status === "canceled") &&
+              (run.status === "completed" ||
+                run.status === "failed" ||
+                run.status === "canceled") &&
               events.length === 0
             ) {
               closeStream();

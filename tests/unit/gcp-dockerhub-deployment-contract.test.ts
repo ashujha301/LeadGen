@@ -145,9 +145,7 @@ describe("GCP Docker Hub deployment contract", () => {
   it("loads AUTH_SECRET and IP_HASH_SALT from config.env, not Secret Manager", () => {
     const loadSecrets = read("infra/scripts/load-secrets.sh");
     const configExample = read("infra/config/config.env.example");
-    const forbiddenBlock = loadSecrets.match(
-      /FORBIDDEN_CONFIG_KEYS=\([\s\S]*?\)/,
-    )?.[0];
+    const forbiddenBlock = loadSecrets.match(/FORBIDDEN_CONFIG_KEYS=\([\s\S]*?\)/)?.[0];
 
     expect(forbiddenBlock).toBeTruthy();
     expect(forbiddenBlock).not.toContain("IP_HASH_SALT");

@@ -95,16 +95,8 @@ export const runService = {
 
     const idempotencyKey = clientIdempotencyKey?.trim() || randomUUID();
 
-    const existingByKey = await runsRepo.getRunByIdempotencyKeyForUser(
-      db,
-      idempotencyKey,
-      userId,
-    );
-    const activeRun = await runsRepo.getActiveRunByDomainAndUser(
-      db,
-      normalizedDomain,
-      userId,
-    );
+    const existingByKey = await runsRepo.getRunByIdempotencyKeyForUser(db, idempotencyKey, userId);
+    const activeRun = await runsRepo.getActiveRunByDomainAndUser(db, normalizedDomain, userId);
 
     const plan = planRunCreation({
       clientIdempotencyKey,

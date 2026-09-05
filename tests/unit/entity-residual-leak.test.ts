@@ -70,11 +70,7 @@ describe("entity detail residual leak hardening", () => {
     const detail = await entityService.getCompany("c1", "user-a");
 
     expect(listOwnedPersonIdsForCompany).toHaveBeenCalledWith({}, "c1", "user-a");
-    expect(findSourceDocumentsByDomainForUser).toHaveBeenCalledWith(
-      {},
-      "acme.com",
-      "user-a",
-    );
+    expect(findSourceDocumentsByDomainForUser).toHaveBeenCalledWith({}, "acme.com", "user-a");
     expect(detail?.people).toEqual([
       { id: "p-owned", name: "Owned", title: "CEO", isCurrent: true },
     ]);

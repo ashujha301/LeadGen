@@ -24,12 +24,7 @@ export const POST = withRequestGuard(async (request, requestId, clientKey) => {
 
     try {
       const idempotencyKey = request.headers.get("Idempotency-Key") ?? undefined;
-      const run = await runService.createRun(
-        parsed.data,
-        user.id,
-        clientKey,
-        idempotencyKey,
-      );
+      const run = await runService.createRun(parsed.data, user.id, clientKey, idempotencyKey);
       return jsonSuccess(run, requestId, undefined, 201);
     } catch (error) {
       if (error instanceof RunQuotaError) {

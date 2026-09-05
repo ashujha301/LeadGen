@@ -4,11 +4,7 @@ import type { Db } from "../client";
 import { leadCandidates, searchRuns } from "../schema/index";
 
 /** True if the user has at least one lead_candidate for this person on their runs. */
-export async function userOwnsPerson(
-  db: Db,
-  personId: string,
-  userId: string,
-): Promise<boolean> {
+export async function userOwnsPerson(db: Db, personId: string, userId: string): Promise<boolean> {
   const [row] = await db
     .select({ id: leadCandidates.id })
     .from(leadCandidates)
@@ -19,11 +15,7 @@ export async function userOwnsPerson(
 }
 
 /** True if the user has at least one lead_candidate for this company on their runs. */
-export async function userOwnsCompany(
-  db: Db,
-  companyId: string,
-  userId: string,
-): Promise<boolean> {
+export async function userOwnsCompany(db: Db, companyId: string, userId: string): Promise<boolean> {
   const [row] = await db
     .select({ id: leadCandidates.id })
     .from(leadCandidates)

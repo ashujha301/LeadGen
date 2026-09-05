@@ -6,7 +6,10 @@ const root = process.cwd();
 
 describe("HVL navigation characterization", () => {
   it("company HVL table links to nested company-scoped lead route", () => {
-    const src = readFileSync(join(root, "src/app/(app)/high-value-leads/[companyId]/page.tsx"), "utf8");
+    const src = readFileSync(
+      join(root, "src/app/(app)/high-value-leads/[companyId]/page.tsx"),
+      "utf8",
+    );
     expect(src).toMatch(/\/high-value-leads\/\$\{companyId\}\/leads\/\$\{lead\.id\}/);
   });
 

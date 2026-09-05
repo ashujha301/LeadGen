@@ -15,13 +15,7 @@ const NAV_ITEMS = [
   { href: "/review", label: "Review", icon: ShieldCheck },
 ];
 
-export function AppShell({
-  children,
-  user,
-}: {
-  children: React.ReactNode;
-  user: SessionUser;
-}) {
+export function AppShell({ children, user }: { children: React.ReactNode; user: SessionUser }) {
   const pathname = usePathname();
 
   return (

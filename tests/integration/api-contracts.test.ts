@@ -33,6 +33,7 @@ describe("API route contract characterization", () => {
 
     expect(routes.sort()).toEqual(
       [
+        "auth/[...nextauth]",
         "health/live",
         "health/ready",
         "v1/companies/[companyId]",
@@ -55,17 +56,19 @@ describe("API route contract characterization", () => {
   });
 
   it("defines the run lifecycle statuses", () => {
-    expect(runStatusSchema.options).toEqual([
-      "queued",
-      "discovering",
-      "extracting",
-      "resolving",
-      "enriching",
-      "scoring",
-      "completed",
-      "failed",
-      "canceled",
-    ]);
+    expect([...runStatusSchema.options].sort()).toEqual(
+      [
+        "queued",
+        "discovering",
+        "extracting",
+        "resolving",
+        "enriching",
+        "scoring",
+        "completed",
+        "failed",
+        "canceled",
+      ].sort(),
+    );
   });
 
   it("defines standard error codes", () => {

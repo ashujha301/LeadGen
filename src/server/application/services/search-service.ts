@@ -14,10 +14,7 @@ import {
 } from "@/server/infrastructure/db";
 
 export const searchService = {
-  async naturalSearch(
-    input: NaturalSearchRequest,
-    userId: string,
-  ): Promise<NaturalSearchResponse> {
+  async naturalSearch(input: NaturalSearchRequest, userId: string): Promise<NaturalSearchResponse> {
     const db = getDb();
 
     if (input.runId) {
@@ -47,11 +44,7 @@ export const searchService = {
       return [];
     }
 
-    const ownedPersonIds = await listOwnedPersonIdsForCompany(
-      db,
-      params.companyId,
-      userId,
-    );
+    const ownedPersonIds = await listOwnedPersonIdsForCompany(db, params.companyId, userId);
 
     return findEmploymentOverlaps(db, {
       ...params,

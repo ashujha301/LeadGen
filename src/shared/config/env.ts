@@ -45,6 +45,11 @@ const envSchema = z.object({
   IP_HASH_SALT: z.string().min(8).default("dev-salt-change-me"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   TRUSTED_PROXY_HOPS: z.coerce.number().int().nonnegative().default(1),
+  // Auth.js — empty defaults so Docker `next build` works without secrets;
+  // sign-in requires real values at runtime.
+  AUTH_SECRET: z.string().default(""),
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

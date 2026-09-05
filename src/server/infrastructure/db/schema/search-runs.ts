@@ -10,6 +10,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
+import { users } from "./auth-users";
 import { runStatusEnum } from "./enums";
 import { timestamps } from "./helpers";
 
@@ -60,6 +61,7 @@ export const searchRuns = pgTable(
     errorRecoverable: boolean("error_recoverable"),
     idempotencyKey: text("idempotency_key").notNull(),
     hashedClientIp: text("hashed_client_ip").notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
     completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
     ...timestamps,
   },
@@ -68,6 +70,7 @@ export const searchRuns = pgTable(
     index("search_runs_normalized_domain_idx").on(table.normalizedDomain),
     index("search_runs_status_idx").on(table.status),
     index("search_runs_hashed_client_ip_idx").on(table.hashedClientIp),
+    index("search_runs_user_id_idx").on(table.userId),
     index("search_runs_created_at_idx").on(table.createdAt),
     index("search_runs_refresh_of_run_id_idx").on(table.refreshOfRunId),
   ],

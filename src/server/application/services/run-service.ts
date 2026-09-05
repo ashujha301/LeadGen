@@ -82,6 +82,7 @@ function toRunResponse(run: SearchRun, refresh?: RunRefreshMetadata): RunRespons
 export const runService = {
   async createRun(
     input: CreateRunRequest,
+    userId: string,
     hashedClientIp: string,
     clientIdempotencyKey?: string,
   ): Promise<RunResponse> {
@@ -91,11 +92,15 @@ export const runService = {
 
     const idempotencyKey = clientIdempotencyKey?.trim() || randomUUID();
 
-    const existingByKey = await runsRepo.getRunByIdempotencyKey(db, idempotencyKey);
-    const activeRun = await runsRepo.getActiveRunByDomainAndIp(
+    const existingByKey = await runsRepo.getRunByIdempotencyKeyForUser(
+      db,
+      idempotencyKey,
+      userId,
+    );
+    const activeRun = await runsRepo.getActiveRunByDomainAndUser(
       db,
       normalizedDomain,
-      hashedClientIp,
+      userId,
     );
 
     const plan = planRunCreation({
@@ -112,9 +117,9 @@ export const runService = {
       return toRunResponse(activeRun, buildRefreshMetadata(activeRun, true));
     }
 
-    const activeCount = await runsRepo.countActiveRunsByIp(db, hashedClientIp);
+    const activeCount = await runsRepo.countActiveRunsByUser(db, userId);
     if (activeCount >= env.PUBLIC_ACTIVE_RUNS_PER_IP) {
-      throw new RunQuotaError("Only one active run is allowed per client at a time.");
+      throw new RunQuotaError("Only one active run is allowed per user at a time.");
     }
 
     const quota = await requestLimitsRepo.getOrCreateRequestLimit(db, hashedClientIp);
@@ -127,7 +132,11 @@ export const runService = {
       throw new RunQuotaError("Global daily run limit reached.");
     }
 
-    const latestCompleted = await runsRepo.getLatestCompletedRunByDomain(db, normalizedDomain);
+    const latestCompleted = await runsRepo.getLatestCompletedRunByDomainForUser(
+      db,
+      normalizedDomain,
+      userId,
+    );
 
     const run = await runsRepo.createRun(db, {
       inputDomain,
@@ -138,6 +147,7 @@ export const runService = {
       refreshOfRunId: latestCompleted?.id,
       idempotencyKey,
       hashedClientIp,
+      userId,
     });
 
     await requestLimitsRepo.incrementRunCount(db, hashedClientIp);
@@ -147,21 +157,21 @@ export const runService = {
     return toRunResponse(run, buildRefreshMetadata(run, false));
   },
 
-  async getRun(runId: string): Promise<RunResponse | null> {
+  async getRun(runId: string, userId: string): Promise<RunResponse | null> {
     const db = getDb();
-    const run = await runsRepo.getRunById(db, runId);
+    const run = await runsRepo.getRunByIdForUser(db, runId, userId);
     return run ? toRunResponse(run) : null;
   },
 
-  async listRecent(limit = 10): Promise<RunResponse[]> {
+  async listRecent(userId: string, limit = 10): Promise<RunResponse[]> {
     const db = getDb();
-    const runs = await runsRepo.listRecentRuns(db, limit);
+    const runs = await runsRepo.listRecentRunsForUser(db, userId, limit);
     return runs.map((run) => toRunResponse(run));
   },
 
-  async cancelRun(runId: string): Promise<RunResponse | null> {
+  async cancelRun(runId: string, userId: string): Promise<RunResponse | null> {
     const db = getDb();
-    const existing = await runsRepo.getRunById(db, runId);
+    const existing = await runsRepo.getRunByIdForUser(db, runId, userId);
     if (!existing) {
       return null;
     }
@@ -182,7 +192,7 @@ export const runService = {
 
     const canceled = await runsRepo.cancelRunIfActive(db, runId);
     if (!canceled) {
-      const latest = await runsRepo.getRunById(db, runId);
+      const latest = await runsRepo.getRunByIdForUser(db, runId, userId);
       if (latest?.status === "canceled") {
         return toRunResponse(latest);
       }

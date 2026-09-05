@@ -102,10 +102,15 @@ export const leadService = {
     };
   },
 
-  async getLead(leadId: string): Promise<LeadDetail | null> {
+  async getLead(leadId: string, userId: string): Promise<LeadDetail | null> {
     const db = getDb();
     const lead = await leadsRepo.getLeadById(db, leadId);
     if (!lead) {
+      return null;
+    }
+
+    const ownedRun = await runsRepo.getRunByIdForUser(db, lead.runId, userId);
+    if (!ownedRun) {
       return null;
     }
 
@@ -197,10 +202,15 @@ export const leadService = {
     };
   },
 
-  async getLeadGraph(leadId: string) {
+  async getLeadGraph(leadId: string, userId: string) {
     const db = getDb();
     const lead = await leadsRepo.getLeadById(db, leadId);
     if (!lead) {
+      return null;
+    }
+
+    const ownedRun = await runsRepo.getRunByIdForUser(db, lead.runId, userId);
+    if (!ownedRun) {
       return null;
     }
 

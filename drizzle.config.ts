@@ -3,6 +3,7 @@ import { defineConfig } from "drizzle-kit";
 const schemaFiles = [
   "enums.ts",
   "helpers.ts",
+  "auth-users.ts",
   "search-runs.ts",
   "source-documents.ts",
   "observations.ts",

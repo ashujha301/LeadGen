@@ -1,20 +1,57 @@
 import type { NaturalSearchRequest, NaturalSearchResponse, OverlapResult } from "@/shared/contracts";
-import { runNaturalSearch } from "@/server/application/search";
+import { NaturalSearchError, runNaturalSearch } from "@/server/application/search";
 import { findEmploymentOverlaps } from "@/server/domain";
-import { getDb } from "@/server/infrastructure/db";
+import {
+  getDb,
+  listOwnedPersonIdsForCompany,
+  runsRepo,
+  userOwnsCompany,
+  userOwnsPerson,
+} from "@/server/infrastructure/db";
 
 export const searchService = {
-  async naturalSearch(input: NaturalSearchRequest): Promise<NaturalSearchResponse> {
+  async naturalSearch(
+    input: NaturalSearchRequest,
+    userId: string,
+  ): Promise<NaturalSearchResponse> {
     const db = getDb();
-    return runNaturalSearch(input, { db });
+
+    if (input.runId) {
+      const run = await runsRepo.getRunByIdForUser(db, input.runId, userId);
+      if (!run) {
+        throw new NaturalSearchError("NOT_FOUND", "Run not found");
+      }
+    }
+
+    return runNaturalSearch(input, { db, userId });
   },
 
-  async findOverlaps(params: {
-    companyId: string;
-    personId?: string;
-    minOverlapDays?: number;
-  }): Promise<OverlapResult[]> {
+  async findOverlaps(
+    params: {
+      companyId: string;
+      personId?: string;
+      minOverlapDays?: number;
+    },
+    userId: string,
+  ): Promise<OverlapResult[]> {
     const db = getDb();
-    return findEmploymentOverlaps(db, params);
+
+    if (!(await userOwnsCompany(db, params.companyId, userId))) {
+      return [];
+    }
+    if (params.personId && !(await userOwnsPerson(db, params.personId, userId))) {
+      return [];
+    }
+
+    const ownedPersonIds = await listOwnedPersonIdsForCompany(
+      db,
+      params.companyId,
+      userId,
+    );
+
+    return findEmploymentOverlaps(db, {
+      ...params,
+      ownedPersonIds,
+    });
   },
 };

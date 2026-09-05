@@ -13,6 +13,9 @@ FORBIDDEN_CONFIG_KEYS=(
   CRUSTDATA_API_KEY
   EMAIL_VERIFIER_API_KEY
   IP_HASH_SALT
+  AUTH_SECRET
+  GOOGLE_CLIENT_ID
+  GOOGLE_CLIENT_SECRET
   DOCKERHUB_PULL_TOKEN
   DOCKERHUB_PASSWORD
   DOCKERHUB_TOKEN
@@ -77,6 +80,14 @@ if [[ -z "${DOCKERHUB_PULL_TOKEN}" ]]; then
   exit 1
 fi
 
+AUTH_SECRET="$(read_secret leadgen-demo-auth-secret)"
+GOOGLE_CLIENT_ID="$(read_secret leadgen-demo-google-client-id)"
+GOOGLE_CLIENT_SECRET="$(read_secret leadgen-demo-google-client-secret)"
+if [[ -z "${AUTH_SECRET}" || -z "${GOOGLE_CLIENT_ID}" || -z "${GOOGLE_CLIENT_SECRET}" ]]; then
+  echo "[load-secrets] Missing auth secrets (AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)" >&2
+  exit 1
+fi
+
 TMP_FILE="$(mktemp "${APP_DIR}/.runtime.env.XXXXXX")"
 cleanup() {
   rm -f "${TMP_FILE}"
@@ -91,6 +102,9 @@ trap cleanup EXIT
   printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY}"
   printf 'CRUSTDATA_API_KEY=%s\n' "${CRUSTDATA_API_KEY}"
   printf 'IP_HASH_SALT=%s\n' "${IP_HASH_SALT}"
+  printf 'AUTH_SECRET=%s\n' "${AUTH_SECRET}"
+  printf 'GOOGLE_CLIENT_ID=%s\n' "${GOOGLE_CLIENT_ID}"
+  printf 'GOOGLE_CLIENT_SECRET=%s\n' "${GOOGLE_CLIENT_SECRET}"
   if [[ -n "${EMAIL_VERIFIER_API_KEY}" ]]; then
     printf 'EMAIL_VERIFIER_API_KEY=%s\n' "${EMAIL_VERIFIER_API_KEY}"
   fi
@@ -104,7 +118,7 @@ chmod 0600 "${DOCKERHUB_TOKEN_FILE}"
 chown root:root "${DOCKERHUB_TOKEN_FILE}" 2>/dev/null || true
 
 # Avoid leaving secret material in the shell environment of callers that source this script.
-unset DATABASE_URL OPENAI_API_KEY CRUSTDATA_API_KEY EMAIL_VERIFIER_API_KEY IP_HASH_SALT DOCKERHUB_PULL_TOKEN
+unset DATABASE_URL OPENAI_API_KEY CRUSTDATA_API_KEY EMAIL_VERIFIER_API_KEY IP_HASH_SALT AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET DOCKERHUB_PULL_TOKEN
 
 echo "[load-secrets] Wrote ${OUTPUT_FILE} (secrets not logged)"
 echo "[load-secrets] Docker Hub pull token stored at ${DOCKERHUB_TOKEN_FILE}"

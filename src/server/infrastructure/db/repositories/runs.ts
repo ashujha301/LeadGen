@@ -19,6 +19,7 @@ export type CreateRunInput = {
   refreshOfRunId?: string;
   idempotencyKey: string;
   hashedClientIp: string;
+  userId: string;
 };
 
 const ACTIVE_STATUSES: RunStatus[] = [
@@ -56,6 +57,7 @@ export async function createRun(db: Db, input: CreateRunInput): Promise<SearchRu
     refreshOfRunId: input.refreshOfRunId ?? null,
     idempotencyKey: input.idempotencyKey,
     hashedClientIp: input.hashedClientIp,
+    userId: input.userId,
     status: "queued",
   };
 
@@ -75,6 +77,77 @@ export async function createRun(db: Db, input: CreateRunInput): Promise<SearchRu
     }
     throw error;
   }
+}
+
+export async function getRunByIdForUser(
+  db: Db,
+  runId: string,
+  userId: string,
+): Promise<SearchRun | undefined> {
+  return db.query.searchRuns.findFirst({
+    where: and(eq(searchRuns.id, runId), eq(searchRuns.userId, userId)),
+  });
+}
+
+export async function getRunByIdempotencyKeyForUser(
+  db: Db,
+  idempotencyKey: string,
+  userId: string,
+): Promise<SearchRun | undefined> {
+  return db.query.searchRuns.findFirst({
+    where: and(eq(searchRuns.idempotencyKey, idempotencyKey), eq(searchRuns.userId, userId)),
+  });
+}
+
+export async function getActiveRunByDomainAndUser(
+  db: Db,
+  normalizedDomain: string,
+  userId: string,
+): Promise<SearchRun | undefined> {
+  return db.query.searchRuns.findFirst({
+    where: and(
+      eq(searchRuns.normalizedDomain, normalizedDomain),
+      eq(searchRuns.userId, userId),
+      inArray(searchRuns.status, ACTIVE_STATUSES),
+    ),
+    orderBy: [desc(searchRuns.createdAt)],
+  });
+}
+
+export async function getLatestCompletedRunByDomainForUser(
+  db: Db,
+  normalizedDomain: string,
+  userId: string,
+): Promise<SearchRun | undefined> {
+  return db.query.searchRuns.findFirst({
+    where: and(
+      eq(searchRuns.normalizedDomain, normalizedDomain),
+      eq(searchRuns.userId, userId),
+      eq(searchRuns.status, "completed"),
+    ),
+    orderBy: [desc(searchRuns.completedAt), desc(searchRuns.createdAt)],
+  });
+}
+
+export async function listRecentRunsForUser(
+  db: Db,
+  userId: string,
+  limit = 20,
+): Promise<SearchRun[]> {
+  return db.query.searchRuns.findMany({
+    where: eq(searchRuns.userId, userId),
+    orderBy: [desc(searchRuns.createdAt)],
+    limit,
+  });
+}
+
+export async function countActiveRunsByUser(db: Db, userId: string): Promise<number> {
+  const rows = await db
+    .select({ id: searchRuns.id })
+    .from(searchRuns)
+    .where(and(eq(searchRuns.userId, userId), inArray(searchRuns.status, ACTIVE_STATUSES)));
+
+  return rows.length;
 }
 
 export async function getRunById(db: Db, runId: string): Promise<SearchRun | undefined> {

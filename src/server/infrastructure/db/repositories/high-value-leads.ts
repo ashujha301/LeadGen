@@ -1,4 +1,4 @@
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { pickCanonicalLeadPerPerson } from "@/server/domain/leads/hvl-person-dedupe";
 import {
@@ -55,9 +55,21 @@ const qualificationFilter = and(
   hasLinkedinProfileFilter,
 );
 
-export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySummary[]> {
-  const allCompanies = await db.select().from(companies).orderBy(companies.name);
+function userScopedLeadFilter(userId: string) {
+  return and(
+    qualificationFilter,
+    sql`exists (
+      select 1 from search_runs
+      where search_runs.id = ${leadCandidates.runId}
+      and search_runs.user_id = ${userId}
+    )`,
+  );
+}
 
+export async function listHighValueCompanies(
+  db: Db,
+  userId: string,
+): Promise<HighValueCompanySummary[]> {
   const qualifyingCounts = await db
     .select({
       companyId: leadCandidates.companyId,
@@ -65,9 +77,15 @@ export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySu
       topScore: sql<number>`max(${leadCandidates.finalScore})`,
     })
     .from(leadCandidates)
-    .where(qualificationFilter)
+    .innerJoin(searchRuns, eq(leadCandidates.runId, searchRuns.id))
+    .where(and(qualificationFilter, eq(searchRuns.userId, userId)))
     .groupBy(leadCandidates.companyId);
 
+  if (qualifyingCounts.length === 0) {
+    return [];
+  }
+
+  const companyIds = qualifyingCounts.map((row) => row.companyId);
   const countByCompany = new Map(
     qualifyingCounts.map((row) => [
       row.companyId,
@@ -75,16 +93,22 @@ export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySu
     ]),
   );
 
-  const activeRuns = await db
-    .select({ normalizedDomain: searchRuns.normalizedDomain })
-    .from(searchRuns)
-    .where(
-      sql`${searchRuns.status} NOT IN ('completed', 'failed', 'canceled')`,
-    );
+  const [ownedCompanies, activeRuns] = await Promise.all([
+    db.select().from(companies).where(inArray(companies.id, companyIds)).orderBy(companies.name),
+    db
+      .select({ normalizedDomain: searchRuns.normalizedDomain })
+      .from(searchRuns)
+      .where(
+        and(
+          eq(searchRuns.userId, userId),
+          sql`${searchRuns.status} NOT IN ('completed', 'failed', 'canceled')`,
+        ),
+      ),
+  ]);
 
   const activeDomains = new Set(activeRuns.map((row) => row.normalizedDomain));
 
-  return allCompanies.map((company) => {
+  return ownedCompanies.map((company) => {
     const stats = countByCompany.get(company.id);
     return {
       ...company,
@@ -104,12 +128,12 @@ export type HighValueLeadsPage = {
 export async function getHighValueLeadsByCompanyId(
   db: Db,
   companyId: string,
-  options: { limit?: number; cursor?: string } = {},
+  options: { limit?: number; cursor?: string; userId: string },
 ): Promise<HighValueLeadsPage> {
   const limit = options.limit ?? 20;
 
   const leads = await db.query.leadCandidates.findMany({
-    where: and(eq(leadCandidates.companyId, companyId), qualificationFilter),
+    where: and(eq(leadCandidates.companyId, companyId), userScopedLeadFilter(options.userId)),
     orderBy: [desc(leadCandidates.finalScore), desc(leadCandidates.id)],
     with: {
       person: true,
@@ -150,8 +174,12 @@ export async function getHighValueLeadNavigation(
   db: Db,
   companyId: string,
   leadId: string,
+  userId: string,
 ): Promise<HighValueLeadNavigation | null> {
-  const { leads } = await getHighValueLeadsByCompanyId(db, companyId, { limit: 10_000 });
+  const { leads } = await getHighValueLeadsByCompanyId(db, companyId, {
+    limit: 10_000,
+    userId,
+  });
   return computeLeadNeighbors(
     leads.map((lead) => lead.id),
     leadId,
@@ -161,7 +189,8 @@ export async function getHighValueLeadNavigation(
 export async function getHighValueCompanyById(
   db: Db,
   companyId: string,
+  userId: string,
 ): Promise<HighValueCompanySummary | undefined> {
-  const companiesList = await listHighValueCompanies(db);
+  const companiesList = await listHighValueCompanies(db, userId);
   return companiesList.find((company) => company.id === companyId);
 }

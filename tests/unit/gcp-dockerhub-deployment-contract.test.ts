@@ -125,7 +125,7 @@ describe("GCP Docker Hub deployment contract", () => {
     expect(deploy).toMatch(/vars\.DEPLOY_ENABLED\s*==\s*'true'|DEPLOY_ENABLED.*true/);
   });
 
-  it("matches the six existing Secret Manager secret IDs", () => {
+  it("matches Secret Manager secret IDs including Google OAuth", () => {
     const loadSecrets = read("infra/scripts/load-secrets.sh");
     for (const secretId of [
       "leadgen-demo-database-url",
@@ -134,6 +134,9 @@ describe("GCP Docker Hub deployment contract", () => {
       "leadgen-demo-email-verifier-api-key",
       "leadgen-demo-ip-hash-salt",
       "leadgen-demo-dockerhub-pull-token",
+      "leadgen-demo-auth-secret",
+      "leadgen-demo-google-client-id",
+      "leadgen-demo-google-client-secret",
     ]) {
       expect(loadSecrets).toContain(secretId);
     }

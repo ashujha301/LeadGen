@@ -13,6 +13,10 @@ resource "google_compute_subnetwork" "subnet" {
 resource "google_compute_address" "static_ip" {
   name   = "${var.name_prefix}-ip"
   region = var.region
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_compute_firewall" "allow_http" {
@@ -25,6 +29,22 @@ resource "google_compute_firewall" "allow_http" {
   allow {
     protocol = "tcp"
     ports    = ["80"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = [var.network_tag]
+}
+
+resource "google_compute_firewall" "allow_https" {
+  name    = "${var.name_prefix}-allow-https"
+  network = google_compute_network.vpc.name
+
+  direction = "INGRESS"
+  priority  = 1000
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
   }
 
   source_ranges = ["0.0.0.0/0"]

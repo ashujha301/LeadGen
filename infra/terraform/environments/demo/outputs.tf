@@ -1,16 +1,11 @@
 output "static_ip_address" {
-  description = "Public evaluator URL host"
+  description = "Reserved public static IP address"
   value       = module.network.static_ip_address
 }
 
 output "evaluator_url" {
-  description = "Initial HTTP evaluator URL"
-  value       = "http://${module.network.static_ip_address}"
-}
-
-output "artifact_registry_url" {
-  description = "Docker registry prefix for images"
-  value       = module.registry.repository_url
+  description = "Public HTTPS evaluator URL (DNS must point to static_ip_address)"
+  value       = "https://demoleadgen.duckdns.org"
 }
 
 output "github_deploy_service_account_email" {
@@ -36,4 +31,9 @@ output "compute_instance_name" {
 output "compute_instance_zone" {
   description = "Compute Engine instance zone"
   value       = module.compute.instance_zone
+}
+
+output "iap_ssh_command" {
+  description = "Copyable IAP SSH command for the demo VM"
+  value       = "gcloud compute ssh ${module.compute.instance_name} --project=${var.project_id} --zone=${module.compute.instance_zone} --tunnel-through-iap"
 }

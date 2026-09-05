@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS base
+FROM mcr.microsoft.com/playwright:v1.62.1-noble AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:${PATH}"
 RUN corepack enable
@@ -16,22 +16,29 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build:worker
 
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS runner
+FROM base AS prod-deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
+FROM mcr.microsoft.com/playwright:v1.62.1-noble AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PLAYWRIGHT_HEADLESS=true
 
-RUN addgroup --system --gid 1001 leadgen \
-  && adduser --system --uid 1001 --ingroup leadgen leadgen
+# Playwright base image already provides non-root `pwuser` (uid/gid 1000).
+RUN mkdir -p /app/tmp \
+  && chown -R pwuser:pwuser /app
 
-COPY --from=builder /app/dist/worker ./dist/worker
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder --chown=pwuser:pwuser /app/dist/worker ./dist/worker
+COPY --from=prod-deps --chown=pwuser:pwuser /app/node_modules ./node_modules
+COPY --from=builder --chown=pwuser:pwuser /app/package.json ./package.json
+COPY --from=builder --chown=pwuser:pwuser /app/drizzle ./drizzle
 
-USER leadgen
+USER pwuser
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD node -e "process.exit(0)"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+  CMD node -e "const fs=require('fs');const p=process.env.WORKER_HEARTBEAT_PATH||'/tmp/leadgen-worker-heartbeat';const age=Date.now()-Number(fs.readFileSync(p,'utf8'));process.exit(Number.isFinite(age)&&age<60000?0:1)"
 
 CMD ["node", "dist/worker/index.js"]

@@ -20,3 +20,8 @@ variable "allowed_branch_ref" {
   type    = string
   default = "refs/heads/main"
 }
+
+variable "admin_principal" {
+  description = "Human admin principal for IAP SSH and OS Login"
+  type        = string
+}

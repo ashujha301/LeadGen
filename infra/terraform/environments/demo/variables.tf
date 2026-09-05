@@ -1,18 +1,19 @@
 variable "project_id" {
   description = "GCP project ID"
   type        = string
+  default     = "leadgen-507715"
 }
 
 variable "region" {
   description = "Primary GCP region"
   type        = string
-  default     = "us-central1"
+  default     = "us-east5"
 }
 
 variable "zone" {
   description = "Primary GCP zone"
   type        = string
-  default     = "us-central1-a"
+  default     = "us-east5-b"
 }
 
 variable "repository_owner" {
@@ -45,22 +46,10 @@ variable "disk_size_gb" {
   default     = 20
 }
 
-variable "artifact_repository_id" {
-  description = "Artifact Registry repository ID"
+variable "admin_principal" {
+  description = "Human admin principal for IAP SSH and OS Login (e.g. user:email@example.com)"
   type        = string
-  default     = "leadgen-demo"
-}
-
-variable "artifact_retention_count" {
-  description = "Number of recent image versions to retain"
-  type        = number
-  default     = 20
-}
-
-variable "artifact_untagged_retention_days" {
-  description = "Days to retain untagged images"
-  type        = number
-  default     = 7
+  default     = "user:ashujha301@gmail.com"
 }
 
 variable "labels" {

@@ -306,6 +306,12 @@ export async function scoreLeadsIncremental(
       continue;
     }
 
+    await leadsRepo.markOtherLeadsStaleForPersonCompany(db, {
+      personId: person.id,
+      companyId: company.id,
+      keepLeadId: lead.id,
+    });
+
     await leadsRepo.createScoreComponents(
       db,
       score.components.map((component) => ({

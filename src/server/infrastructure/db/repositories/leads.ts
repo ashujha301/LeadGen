@@ -74,6 +74,25 @@ export async function createLeadCandidate(
   return lead;
 }
 
+export async function markOtherLeadsStaleForPersonCompany(
+  db: Db,
+  input: { personId: string; companyId: string; keepLeadId: string },
+): Promise<number> {
+  const updated = await db
+    .update(leadCandidates)
+    .set({ isStale: true, updatedAt: new Date() })
+    .where(
+      and(
+        eq(leadCandidates.personId, input.personId),
+        eq(leadCandidates.companyId, input.companyId),
+        eq(leadCandidates.isStale, false),
+        sql`${leadCandidates.id} <> ${input.keepLeadId}`,
+      ),
+    )
+    .returning({ id: leadCandidates.id });
+  return updated.length;
+}
+
 export async function createScoreComponents(
   db: Db,
   inputs: NewScoreComponentRow[],

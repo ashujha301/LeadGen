@@ -142,6 +142,12 @@ export async function scoreLeads(ctx: StageContext): Promise<StageResult> {
       roleMatchReasons: roleMatch.roleMatchReasons,
     });
 
+    await leadsRepo.markOtherLeadsStaleForPersonCompany(db, {
+      personId: person.id,
+      companyId: company.id,
+      keepLeadId: lead.id,
+    });
+
     await leadsRepo.createScoreComponents(
       db,
       score.components.map((component) => ({

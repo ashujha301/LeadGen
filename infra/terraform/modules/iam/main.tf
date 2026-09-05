@@ -10,8 +10,9 @@ resource "google_service_account" "github_deploy" {
 
 resource "google_iam_workload_identity_pool" "github" {
   workload_identity_pool_id = "${var.name_prefix}-github"
-  display_name              = "GitHub Actions pool for leadGen-demo"
-  description               = "OIDC federation for ${var.repository_owner}/${var.repository_name}"
+  # GCP requires display_name <= 32 characters.
+  display_name = "LeadGen GitHub WIF pool"
+  description  = "OIDC federation for ${var.repository_owner}/${var.repository_name}"
 }
 
 resource "google_iam_workload_identity_pool_provider" "github" {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { REASON_CODES, scoreLead, TOTAL_SCORE_MAX } from "@/server/domain/scoring";
+import { scoreContactability } from "@/server/domain/scoring/contactability";
 
 describe("lead scoring", () => {
   it("returns deterministic total and components summing to total", () => {
@@ -89,5 +90,31 @@ describe("lead scoring", () => {
 
     expect(result.total).toBeGreaterThan(70);
     expect(result.components.every((component) => component.contribution >= 0)).toBe(true);
+  });
+
+  it("does not award contactability for slash email/phone/linkedin", () => {
+    const result = scoreContactability(
+      {
+        contacts: [
+          { type: "email", value: "/", verificationStatus: "unverified" },
+          { type: "phone", value: "/", verificationStatus: "unverified" },
+          { type: "linkedin", value: "/", verificationStatus: "unverified" },
+        ],
+      },
+      2,
+    );
+
+    expect(result.rawValue).toBe(0);
+    expect(result.contribution).toBe(0);
+  });
+
+  it("still awards contactability for a real unverified email", () => {
+    const result = scoreContactability(
+      {
+        contacts: [{ type: "email", value: "founder@devvine.ai", verificationStatus: "unverified" }],
+      },
+      2,
+    );
+    expect(result.contribution).toBeGreaterThan(0);
   });
 });

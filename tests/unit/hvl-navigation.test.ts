@@ -96,6 +96,11 @@ describe("HVL navigation + score-gate regression", () => {
       { id: "high", finalScore: 54 },
     ]);
     expect(sorted[0]?.id).toBe("high");
-    expect(computeLeadNeighbors(sorted.map((row) => row.id), "high")?.nextLeadId).toBe("low");
+    expect(
+      computeLeadNeighbors(
+        sorted.map((row) => row.id),
+        "high",
+      )?.nextLeadId,
+    ).toBe("low");
   });
 });

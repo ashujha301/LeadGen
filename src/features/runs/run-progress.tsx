@@ -66,7 +66,11 @@ export function RunProgressPanel({ status, progress, error, elapsedMs }: RunProg
           )}
           <span className="text-sm font-medium">{STAGE_LABELS[status]}</span>
         </div>
-        <Badge variant={status === "failed" ? "destructive" : status === "completed" ? "success" : "default"}>
+        <Badge
+          variant={
+            status === "failed" ? "destructive" : status === "completed" ? "success" : "default"
+          }
+        >
           {status}
         </Badge>
       </div>

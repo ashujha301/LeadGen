@@ -19,7 +19,9 @@ function isPrivateIp(address: string): boolean {
   return PRIVATE_IPV4_RANGES.some((p) => p.test(address));
 }
 
-export function validateUrl(urlString: string): { ok: true; url: URL } | { ok: false; reason: string } {
+export function validateUrl(
+  urlString: string,
+): { ok: true; url: URL } | { ok: false; reason: string } {
   let url: URL;
 
   try {
@@ -48,7 +50,9 @@ export function validateUrl(urlString: string): { ok: true; url: URL } | { ok: f
   return { ok: true, url };
 }
 
-export async function resolveAndValidateHost(url: URL): Promise<{ ok: true } | { ok: false; reason: string }> {
+export async function resolveAndValidateHost(
+  url: URL,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   const hostname = url.hostname;
 
   if (isIP(hostname)) {

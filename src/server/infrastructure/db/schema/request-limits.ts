@@ -1,12 +1,4 @@
-import {
-  index,
-  integer,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { timestamps } from "./helpers";
 
@@ -24,10 +16,7 @@ export const requestLimits = pgTable(
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("request_limits_ip_window_idx").on(
-      table.hashedIp,
-      table.quotaWindowStart,
-    ),
+    uniqueIndex("request_limits_ip_window_idx").on(table.hashedIp, table.quotaWindowStart),
     index("request_limits_hashed_ip_idx").on(table.hashedIp),
   ],
 );

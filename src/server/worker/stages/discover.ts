@@ -62,7 +62,12 @@ function canonicalizeUrl(url: URL): string {
   return url.toString();
 }
 
-function buildQueueItem(url: string, depth: number, anchorText = "", navContext?: string): QueueItem {
+function buildQueueItem(
+  url: string,
+  depth: number,
+  anchorText = "",
+  navContext?: string,
+): QueueItem {
   const pathname = new URL(url).pathname;
   return {
     url,
@@ -146,7 +151,14 @@ function collectDiscoveredLinks(
       continue;
     }
 
-    enqueueDiscoveredLink(queue, scheduled, normalized, depth + 1, link.anchorText, link.navContext);
+    enqueueDiscoveredLink(
+      queue,
+      scheduled,
+      normalized,
+      depth + 1,
+      link.anchorText,
+      link.navContext,
+    );
   }
 }
 

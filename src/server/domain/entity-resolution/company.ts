@@ -8,8 +8,7 @@ export type CompanyRecord = {
 };
 
 export type CompanyResolutionResult =
-  | { status: "matched"; company: CompanyRecord }
-  | { status: "unmatched"; normalizedDomain: string };
+  { status: "matched"; company: CompanyRecord } | { status: "unmatched"; normalizedDomain: string };
 
 /**
  * Resolve a company by normalized domain against known records and alias domains.

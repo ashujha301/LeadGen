@@ -1,9 +1,5 @@
 import { REASON_CODES, type ReasonCode } from "./reason-codes";
-import {
-  SCORE_COMPONENT_KEYS,
-  SCORE_COMPONENT_LABELS,
-  getScoreComponentMax,
-} from "./score-config";
+import { SCORE_COMPONENT_KEYS, SCORE_COMPONENT_LABELS, getScoreComponentMax } from "./score-config";
 import type { ScoreComponentResult } from "./acquisition-score";
 import {
   isUsableEmail,
@@ -25,7 +21,10 @@ export type ContactabilityInput = {
 /**
  * Contactability scoring (max 15) based on available and verified contact channels.
  */
-export function scoreContactability(input: ContactabilityInput, scoreVersion = 1): ScoreComponentResult {
+export function scoreContactability(
+  input: ContactabilityInput,
+  scoreVersion = 1,
+): ScoreComponentResult {
   const max = getScoreComponentMax(SCORE_COMPONENT_KEYS.contactability, scoreVersion);
   let rawValue = 0;
   let reasonCode: ReasonCode = REASON_CODES.contact.none;

@@ -102,7 +102,7 @@ export async function findEmploymentOverlaps(
               ? toDate(recordA.startDate)! > toDate(recordB.startDate)!
                 ? toDate(recordA.startDate)
                 : toDate(recordB.startDate)
-              : toDate(recordA.startDate) ?? toDate(recordB.startDate),
+              : (toDate(recordA.startDate) ?? toDate(recordB.startDate)),
           );
 
           const overlapEnd = formatDate(
@@ -110,7 +110,7 @@ export async function findEmploymentOverlaps(
               ? toDate(recordA.endDate)! < toDate(recordB.endDate)!
                 ? toDate(recordA.endDate)
                 : toDate(recordB.endDate)
-              : toDate(recordA.endDate) ?? toDate(recordB.endDate),
+              : (toDate(recordA.endDate) ?? toDate(recordB.endDate)),
           );
 
           const candidate: OverlapResult = {
@@ -176,7 +176,9 @@ export async function findSharedEmployerConnections(
 export async function findPreviousColleaguesAtCompany(
   db: Db,
   companyId: string,
-): Promise<Array<{ personId: string; personName: string; title: string | null; endDate: string | null }>> {
+): Promise<
+  Array<{ personId: string; personName: string; title: string | null; endDate: string | null }>
+> {
   const rows = await db
     .select({
       personId: people.id,

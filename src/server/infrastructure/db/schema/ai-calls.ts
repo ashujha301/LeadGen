@@ -1,10 +1,4 @@
-import {
-  index,
-  integer,
-  pgTable,
-  text,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 import { aiCallStatusEnum, aiOperationEnum } from "./enums";
 import { createdAt } from "./helpers";

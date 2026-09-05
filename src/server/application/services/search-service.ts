@@ -1,4 +1,8 @@
-import type { NaturalSearchRequest, NaturalSearchResponse, OverlapResult } from "@/shared/contracts";
+import type {
+  NaturalSearchRequest,
+  NaturalSearchResponse,
+  OverlapResult,
+} from "@/shared/contracts";
 import { runNaturalSearch } from "@/server/application/search";
 import { findEmploymentOverlaps } from "@/server/domain";
 import { getDb } from "@/server/infrastructure/db";

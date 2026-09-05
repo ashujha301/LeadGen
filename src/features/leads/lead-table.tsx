@@ -39,7 +39,10 @@ const columns = [
   columnHelper.accessor("personName", {
     header: "Person",
     cell: (info) => (
-      <Link href={`/leads/${info.row.original.id}`} className="font-medium text-accent hover:underline">
+      <Link
+        href={`/leads/${info.row.original.id}`}
+        className="font-medium text-accent hover:underline"
+      >
         {info.getValue()}
       </Link>
     ),

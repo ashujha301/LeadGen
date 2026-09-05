@@ -73,7 +73,9 @@ export function getScoreComponentMax(
   key: Exclude<ScoreComponentKey, typeof SCORE_COMPONENT_KEYS.icpFit>,
   scoreVersion: number,
 ): number {
-  return scoreVersion >= 2 ? SCORE_COMPONENT_MAX_V2[key] : SCORE_COMPONENT_MAX_V1[key as keyof typeof SCORE_COMPONENT_MAX_V1];
+  return scoreVersion >= 2
+    ? SCORE_COMPONENT_MAX_V2[key]
+    : SCORE_COMPONENT_MAX_V1[key as keyof typeof SCORE_COMPONENT_MAX_V1];
 }
 
 export function getTotalScoreMax(scoreVersion: number): number {

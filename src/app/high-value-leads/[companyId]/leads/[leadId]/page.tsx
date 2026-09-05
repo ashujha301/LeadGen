@@ -38,8 +38,8 @@ export default async function HighValueLeadDetailPage({ params }: PageProps) {
         </Button>
         <h1 className="text-xl font-semibold">Lead no longer qualifies as high value</h1>
         <p className="text-sm text-muted">
-          {lead.personName} is still linked to {company.name}, but does not currently meet high-value
-          criteria (score, confidence, LinkedIn, or active status).
+          {lead.personName} is still linked to {company.name}, but does not currently meet
+          high-value criteria (score, confidence, LinkedIn, or active status).
         </p>
       </div>
     );

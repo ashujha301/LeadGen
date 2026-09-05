@@ -150,10 +150,9 @@ describe("incremental pipeline domain modules", () => {
 
   it("merges people at the same company when names are highly similar", () => {
     expect(
-      findExistingPersonByNameAtCompany(
-        { normalizedName: "jane oneil" },
-        [{ id: "p1", normalizedName: "jane o'neil" }],
-      ),
+      findExistingPersonByNameAtCompany({ normalizedName: "jane oneil" }, [
+        { id: "p1", normalizedName: "jane o'neil" },
+      ]),
     ).toBe("p1");
   });
 

@@ -25,16 +25,11 @@ const PROFILE_HOST_PATTERNS = [
   /^([a-z0-9-]+\.)?x\.com$/i,
 ];
 
-const PROFILE_PATH_PATTERNS = [
-  /^\/in\//i,
-  /^\/pub\//i,
-  /^\/company\/[^/]+\/people/i,
-];
+const PROFILE_PATH_PATTERNS = [/^\/in\//i, /^\/pub\//i, /^\/company\/[^/]+\/people/i];
 
 const LINKEDIN_COMPANY_PROFILE_PATTERN = /^\/company\/[^/]+\/?$/i;
 
-const LOW_VALUE_CONTENT_PATH_PATTERN =
-  /\/(blog|resources|news|webinar|careers|press)(\/|$|\?)/i;
+const LOW_VALUE_CONTENT_PATH_PATTERN = /\/(blog|resources|news|webinar|careers|press)(\/|$|\?)/i;
 
 export function isLowValueContentPath(pathname: string): boolean {
   return LOW_VALUE_CONTENT_PATH_PATTERN.test(pathname);

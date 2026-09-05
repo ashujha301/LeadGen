@@ -136,10 +136,7 @@ export async function getCompanyById(db: Db, companyId: string): Promise<Company
   });
 }
 
-export async function createCompanyAlias(
-  db: Db,
-  input: NewCompanyAlias,
-): Promise<CompanyAlias> {
+export async function createCompanyAlias(db: Db, input: NewCompanyAlias): Promise<CompanyAlias> {
   const [alias] = await db
     .insert(companyAliases)
     .values(input)
@@ -194,11 +191,7 @@ export async function updatePerson(
   personId: string,
   input: Partial<NewPerson>,
 ): Promise<Person | undefined> {
-  const [person] = await db
-    .update(people)
-    .set(input)
-    .where(eq(people.id, personId))
-    .returning();
+  const [person] = await db.update(people).set(input).where(eq(people.id, personId)).returning();
   return person;
 }
 
@@ -248,10 +241,7 @@ export async function findPersonByProfileUrl(
   });
 }
 
-export async function createEmployment(
-  db: Db,
-  input: NewEmployment,
-): Promise<Employment> {
+export async function createEmployment(db: Db, input: NewEmployment): Promise<Employment> {
   const [employment] = await db.insert(employments).values(input).returning();
   if (!employment) {
     throw new Error("Failed to create employment");
@@ -367,28 +357,19 @@ export async function incrementEmploymentMissedRefreshCount(
   return employment;
 }
 
-export async function getEmploymentsByPersonId(
-  db: Db,
-  personId: string,
-): Promise<Employment[]> {
+export async function getEmploymentsByPersonId(db: Db, personId: string): Promise<Employment[]> {
   return db.query.employments.findMany({
     where: eq(employments.personId, personId),
   });
 }
 
-export async function getEmploymentsByCompanyId(
-  db: Db,
-  companyId: string,
-): Promise<Employment[]> {
+export async function getEmploymentsByCompanyId(db: Db, companyId: string): Promise<Employment[]> {
   return db.query.employments.findMany({
     where: eq(employments.companyId, companyId),
   });
 }
 
-export async function createContactPoint(
-  db: Db,
-  input: NewContactPoint,
-): Promise<ContactPoint> {
+export async function createContactPoint(db: Db, input: NewContactPoint): Promise<ContactPoint> {
   const [contact] = await db
     .insert(contactPoints)
     .values(input)
@@ -490,10 +471,7 @@ export async function getBusinessSignalsByCompanyId(
   });
 }
 
-export async function createEntityMatch(
-  db: Db,
-  input: NewEntityMatch,
-): Promise<EntityMatch> {
+export async function createEntityMatch(db: Db, input: NewEntityMatch): Promise<EntityMatch> {
   const [match] = await db.insert(entityMatches).values(input).returning();
   if (!match) {
     throw new Error("Failed to create entity match");
@@ -501,10 +479,7 @@ export async function createEntityMatch(
   return match;
 }
 
-export async function getEntityMatchesForReview(
-  db: Db,
-  limit = 50,
-): Promise<EntityMatch[]> {
+export async function getEntityMatchesForReview(db: Db, limit = 50): Promise<EntityMatch[]> {
   return db.query.entityMatches.findMany({
     where: eq(entityMatches.decision, "review"),
     limit,
@@ -543,7 +518,8 @@ export async function upsertPersonExternalProfile(
         .set({
           personId: input.personId,
           profileUrl: input.profileUrl ?? existingByProvider.profileUrl,
-          normalizedProfileUrl: input.normalizedProfileUrl ?? existingByProvider.normalizedProfileUrl,
+          normalizedProfileUrl:
+            input.normalizedProfileUrl ?? existingByProvider.normalizedProfileUrl,
           providerUpdatedAt: input.providerUpdatedAt ?? existingByProvider.providerUpdatedAt,
         })
         .where(eq(personExternalProfiles.id, existingByProvider.id))

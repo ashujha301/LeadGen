@@ -19,10 +19,7 @@ export function Alert({
   className?: string;
 }) {
   return (
-    <div
-      role="alert"
-      className={`rounded-md border p-4 ${variantClasses[variant]} ${className}`}
-    >
+    <div role="alert" className={`rounded-md border p-4 ${variantClasses[variant]} ${className}`}>
       {title && <h5 className="mb-1 text-sm font-medium">{title}</h5>}
       <div className="text-sm">{children}</div>
     </div>

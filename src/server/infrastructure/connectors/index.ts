@@ -42,8 +42,4 @@ export {
 } from "./email-verifier/client";
 export { mapEmailVerificationToObservations } from "./email-verifier/mapper";
 
-export {
-  assertSafeUrl,
-  resolveAndValidateHost,
-  validateUrl,
-} from "./ssrf-guard";
+export { assertSafeUrl, resolveAndValidateHost, validateUrl } from "./ssrf-guard";

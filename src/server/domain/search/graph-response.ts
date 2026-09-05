@@ -12,7 +12,13 @@ export type LeadGraphInput = {
   employmentHistory: Array<
     Pick<
       Employment,
-      "id" | "normalizedTitle" | "normalizedRole" | "startDate" | "endDate" | "isCurrent" | "confidence"
+      | "id"
+      | "normalizedTitle"
+      | "normalizedRole"
+      | "startDate"
+      | "endDate"
+      | "isCurrent"
+      | "confidence"
     > & {
       companyId: string | null;
       companyName: string;
@@ -37,7 +43,10 @@ export type LeadGraphInput = {
 const MAX_NODES = 40;
 const MAX_EDGES = 80;
 
-function personNode(person: Pick<Person, "id" | "name" | "confidence">, evidenceIds?: string[]): GraphNode {
+function personNode(
+  person: Pick<Person, "id" | "name" | "confidence">,
+  evidenceIds?: string[],
+): GraphNode {
   return {
     data: {
       id: person.id,
@@ -82,14 +91,8 @@ export function buildLeadGraph(input: LeadGraphInput): GraphResponse {
   const nodes = new Map<string, GraphNode>();
   const edges = new Map<string, GraphEdge>();
 
-  nodes.set(
-    input.person.id,
-    personNode(input.person, input.evidenceIds?.[input.person.id]),
-  );
-  nodes.set(
-    input.company.id,
-    companyNode(input.company, input.evidenceIds?.[input.company.id]),
-  );
+  nodes.set(input.person.id, personNode(input.person, input.evidenceIds?.[input.person.id]));
+  nodes.set(input.company.id, companyNode(input.company, input.evidenceIds?.[input.company.id]));
 
   const current = input.currentEmployment;
   if (current) {

@@ -1,11 +1,7 @@
 import type { RoleCriteria } from "@/shared/contracts/roles";
 import { matchTitleAgainstRoleCriteria } from "@/server/domain/roles/matching";
 import { REASON_CODES, type ReasonCode } from "./reason-codes";
-import {
-  SCORE_COMPONENT_KEYS,
-  SCORE_COMPONENT_LABELS,
-  getScoreComponentMax,
-} from "./score-config";
+import { SCORE_COMPONENT_KEYS, SCORE_COMPONENT_LABELS, getScoreComponentMax } from "./score-config";
 import type { ScoreComponentResult } from "./acquisition-score";
 
 export type TargetRoleFitInput = {
@@ -24,7 +20,10 @@ function isEmptyCriteria(criteria: RoleCriteria): boolean {
 /**
  * Target role fit scoring (max 10): alignment between a person's title and run role criteria.
  */
-export function scoreTargetRoleFit(input: TargetRoleFitInput, scoreVersion = 1): ScoreComponentResult {
+export function scoreTargetRoleFit(
+  input: TargetRoleFitInput,
+  scoreVersion = 1,
+): ScoreComponentResult {
   const max = getScoreComponentMax(SCORE_COMPONENT_KEYS.targetRoleFit, scoreVersion);
   let rawValue = 0;
   let reasonCode: ReasonCode = REASON_CODES.role.noMatch;

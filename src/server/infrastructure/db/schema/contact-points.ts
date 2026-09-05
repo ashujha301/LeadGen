@@ -1,12 +1,4 @@
-import {
-  index,
-  numeric,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { contactTypeEnum, verificationStatusEnum } from "./enums";
 import { timestamps } from "./helpers";
@@ -39,10 +31,7 @@ export const contactPoints = pgTable(
     index("contact_points_person_id_idx").on(table.personId),
     index("contact_points_company_id_idx").on(table.companyId),
     index("contact_points_type_idx").on(table.type),
-    uniqueIndex("contact_points_type_normalized_value_idx").on(
-      table.type,
-      table.normalizedValue,
-    ),
+    uniqueIndex("contact_points_type_normalized_value_idx").on(table.type, table.normalizedValue),
   ],
 );
 

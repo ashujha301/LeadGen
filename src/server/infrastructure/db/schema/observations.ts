@@ -46,10 +46,7 @@ export const observations = pgTable(
     index("observations_attribute_idx").on(table.attribute),
     index("observations_observed_at_idx").on(table.observedAt),
     index("observations_subject_key_idx").on(table.subjectKey),
-    index("observations_resolved_entity_idx").on(
-      table.resolvedEntityType,
-      table.resolvedEntityId,
-    ),
+    index("observations_resolved_entity_idx").on(table.resolvedEntityType, table.resolvedEntityId),
     uniqueIndex("observations_source_document_fingerprint_idx").on(
       table.sourceDocumentId,
       table.fingerprint,

@@ -24,7 +24,10 @@ export function isEndpointCircuitOpen(key: EndpointLimiterKey): boolean {
   return true;
 }
 
-export function openEndpointCircuit(key: EndpointLimiterKey, durationMs = BREAKER_DURATION_MS): void {
+export function openEndpointCircuit(
+  key: EndpointLimiterKey,
+  durationMs = BREAKER_DURATION_MS,
+): void {
   breakers.set(key, { openUntil: Date.now() + durationMs });
 }
 

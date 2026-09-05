@@ -10,31 +10,19 @@ import { isUniqueViolation } from "@/server/infrastructure/db/errors";
 describe("current employment unique index", () => {
   it("treats an existing current row for the same person and company as a duplicate", () => {
     expect(
-      hasCurrentEmployment(
-        [{ personId: "p1", companyId: "c1", isCurrent: true }],
-        "p1",
-        "c1",
-      ),
+      hasCurrentEmployment([{ personId: "p1", companyId: "c1", isCurrent: true }], "p1", "c1"),
     ).toBe(true);
   });
 
   it("does not treat a past employment as satisfying the current unique index", () => {
     expect(
-      hasCurrentEmployment(
-        [{ personId: "p1", companyId: "c1", isCurrent: false }],
-        "p1",
-        "c1",
-      ),
+      hasCurrentEmployment([{ personId: "p1", companyId: "c1", isCurrent: false }], "p1", "c1"),
     ).toBe(false);
   });
 
   it("does not treat another person's current employment as a duplicate", () => {
     expect(
-      hasCurrentEmployment(
-        [{ personId: "p2", companyId: "c1", isCurrent: true }],
-        "p1",
-        "c1",
-      ),
+      hasCurrentEmployment([{ personId: "p2", companyId: "c1", isCurrent: true }], "p1", "c1"),
     ).toBe(false);
   });
 });
@@ -166,13 +154,10 @@ describe("person draft identity dedupe", () => {
 
   it("finds existing people by high name similarity at the same company", () => {
     expect(
-      findExistingPersonByNameAtCompany(
-        { normalizedName: "john smith" },
-        [
-          { id: "p1", normalizedName: "john smyth" },
-          { id: "p2", normalizedName: "jane doe" },
-        ],
-      ),
+      findExistingPersonByNameAtCompany({ normalizedName: "john smith" }, [
+        { id: "p1", normalizedName: "john smyth" },
+        { id: "p2", normalizedName: "jane doe" },
+      ]),
     ).toBe("p1");
   });
 });

@@ -15,7 +15,9 @@ function parseDate(value: string | null | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function mergeIntervals(intervals: Array<{ start: Date; end: Date }>): Array<{ start: Date; end: Date }> {
+function mergeIntervals(
+  intervals: Array<{ start: Date; end: Date }>,
+): Array<{ start: Date; end: Date }> {
   if (intervals.length === 0) {
     return [];
   }

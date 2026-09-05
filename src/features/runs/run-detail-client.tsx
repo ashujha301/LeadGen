@@ -305,10 +305,7 @@ export function RunDetailClient({ runId }: RunDetailClientProps) {
       )}
 
       {run.status === "canceled" && (
-        <EmptyState
-          title="Run canceled"
-          description="This search was stopped before completion."
-        />
+        <EmptyState title="Run canceled" description="This search was stopped before completion." />
       )}
 
       {run.status === "failed" && (

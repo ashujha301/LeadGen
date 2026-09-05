@@ -13,7 +13,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body
         className="min-h-screen font-sans"
-        style={{ fontFamily: "var(--font-montserrat, 'Montserrat Variable', system-ui, sans-serif)" }}
+        style={{
+          fontFamily: "var(--font-montserrat, 'Montserrat Variable', system-ui, sans-serif)",
+        }}
       >
         <AppShell>{children}</AppShell>
       </body>

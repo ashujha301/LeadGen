@@ -82,7 +82,9 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
           : 0;
 
   return (
-    <div className={`space-y-3 ${compact ? "" : "rounded-md border border-[var(--border)] bg-surface p-4"}`}>
+    <div
+      className={`space-y-3 ${compact ? "" : "rounded-md border border-[var(--border)] bg-surface p-4"}`}
+    >
       {!compact && (
         <div className="flex items-center gap-2 text-sm font-medium">
           <Sparkles className="h-4 w-4 text-accent" />
@@ -124,9 +126,15 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
             ) : (
               <ul className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)]">
                 {results.result.items.map((result) => (
-                  <li key={result.leadId} className="flex items-center justify-between px-3 py-2 text-sm">
+                  <li
+                    key={result.leadId}
+                    className="flex items-center justify-between px-3 py-2 text-sm"
+                  >
                     <div>
-                      <Link href={`/leads/${result.leadId}`} className="font-medium text-accent hover:underline">
+                      <Link
+                        href={`/leads/${result.leadId}`}
+                        className="font-medium text-accent hover:underline"
+                      >
                         {result.personName}
                       </Link>
                       <span className="ml-2 text-muted">{result.companyName}</span>
@@ -146,11 +154,17 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
             ) : (
               <ul className="space-y-3">
                 {results.result.items.map((item) => (
-                  <li key={item.personId} className="rounded-md border border-[var(--border)] p-3 text-sm">
+                  <li
+                    key={item.personId}
+                    className="rounded-md border border-[var(--border)] p-3 text-sm"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         {item.leadId ? (
-                          <Link href={`/leads/${item.leadId}`} className="font-medium text-accent hover:underline">
+                          <Link
+                            href={`/leads/${item.leadId}`}
+                            className="font-medium text-accent hover:underline"
+                          >
                             {item.personName}
                           </Link>
                         ) : (
@@ -188,7 +202,10 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
             ) : (
               <ul className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)]">
                 {results.result.items.map((item, index) => (
-                  <li key={`${item.personA.id}-${item.personB.id}-${index}`} className="px-3 py-2 text-sm">
+                  <li
+                    key={`${item.personA.id}-${item.personB.id}-${index}`}
+                    className="px-3 py-2 text-sm"
+                  >
                     <span className="font-medium">{item.personA.name}</span>
                     <span className="text-muted"> overlapped with </span>
                     <span className="font-medium">{item.personB.name}</span>

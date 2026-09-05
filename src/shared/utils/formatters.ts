@@ -25,7 +25,10 @@ export function formatRelativeTime(isoDate: string): string {
 }
 
 export function formatDomain(domain: string): string {
-  return domain.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase();
+  return domain
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "")
+    .toLowerCase();
 }
 
 export function capitalizeWords(value: string): string {

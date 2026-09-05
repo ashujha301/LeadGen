@@ -34,7 +34,8 @@ function loadFixture(name: string): unknown {
 
 function setCrustdataEnv(overrides: Record<string, string> = {}): void {
   process.env.DATABASE_URL =
-    process.env.DATABASE_URL ?? "postgresql://leadgen:leadgen@localhost:5432/leadgen?sslmode=disable";
+    process.env.DATABASE_URL ??
+    "postgresql://leadgen:leadgen@localhost:5432/leadgen?sslmode=disable";
   process.env.ENABLE_CRUSTDATA = "true";
   process.env.CRUSTDATA_API_KEY = "test-key";
   process.env.CRUSTDATA_API_BASE_URL = "https://api.crustdata.com";
@@ -106,16 +107,16 @@ describe("Crustdata connector", () => {
     }
     expect(
       fetchMock.mock.calls.some(
-        ([url, init]) =>
-          String(url).endsWith("/company/enrich") && init?.method === "POST",
+        ([url, init]) => String(url).endsWith("/company/enrich") && init?.method === "POST",
       ),
     ).toBe(true);
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain("/v1/company");
   });
 
   it("never calls legacy /v1 endpoints", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify(loadFixture("person-search-success.json")), { status: 200 }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(loadFixture("person-search-success.json")), { status: 200 }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -129,8 +130,9 @@ describe("Crustdata connector", () => {
   it("treats empty company matches as successful no-match", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify(loadFixture("company-enrich-empty.json")), { status: 200 }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify(loadFixture("company-enrich-empty.json")), { status: 200 }),
       ),
     );
 
@@ -179,9 +181,7 @@ describe("Crustdata connector", () => {
       }),
     );
 
-    const result = await enrichPerson([
-      "https://www.linkedin.com/in/harshit-agarwal-appknox",
-    ]);
+    const result = await enrichPerson(["https://www.linkedin.com/in/harshit-agarwal-appknox"]);
 
     expect(result.status).toBe("success");
     if (result.status === "success") {
@@ -202,8 +202,9 @@ describe("Crustdata connector", () => {
   it("accepts redacted person enrich as terminal outcome", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify(loadFixture("person-enrich-redacted.json")), { status: 200 }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify(loadFixture("person-enrich-redacted.json")), { status: 200 }),
       ),
     );
 
@@ -269,8 +270,9 @@ describe("Crustdata connector", () => {
   });
 
   it("uses cache on second identical company enrich request", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify(loadFixture("company-enrich-success.json")), { status: 200 }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify(loadFixture("company-enrich-success.json")), { status: 200 }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -281,9 +283,7 @@ describe("Crustdata connector", () => {
   });
 
   it("rejects invalid response envelopes with Zod", () => {
-    expect(() =>
-      crustdataCompanyEnrichResponseSchema.parse({ unexpected: true }),
-    ).toThrow();
+    expect(() => crustdataCompanyEnrichResponseSchema.parse({ unexpected: true })).toThrow();
     expect(() =>
       crustdataPersonSearchResponseSchema.parse({ profiles: [{ basic_profile: { name: 123 } }] }),
     ).toThrow();

@@ -1,4 +1,7 @@
-import { pickCompanyNameFromObservations, isGenericCompanyLabel } from "@/server/domain/company-identity";
+import {
+  pickCompanyNameFromObservations,
+  isGenericCompanyLabel,
+} from "@/server/domain/company-identity";
 import { isErrorPageTitle } from "@/server/domain/normalization/title";
 import { normalizeCompanyInput } from "@/server/domain/normalization/company-input";
 import { buildPersonSearchSourceKey, hashRoleCriteria } from "@/server/domain/source-keys";
@@ -51,7 +54,9 @@ function collectPersonDrafts(
 
   for (const subjectKey of subjectKeys) {
     const subjectObs = docObs.filter((obs) => obs.subjectKey === subjectKey);
-    const nameObs = subjectObs.find((obs) => obs.entityType === "person" && obs.attribute === "name");
+    const nameObs = subjectObs.find(
+      (obs) => obs.entityType === "person" && obs.attribute === "name",
+    );
     if (!nameObs) {
       continue;
     }
@@ -64,12 +69,17 @@ function collectPersonDrafts(
     drafts.push(
       sanitizePersonDraftContacts({
         name: mention.normalizedName || nameObs.rawValue,
-        normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
-        title: subjectObs.find((obs) => obs.entityType === "person" && obs.attribute === "title")?.rawValue,
-        email: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "email")?.rawValue,
-        phone: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "phone")?.rawValue,
-        profileUrl: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "profile_url")
+        normalizedName:
+          nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
+        title: subjectObs.find((obs) => obs.entityType === "person" && obs.attribute === "title")
           ?.rawValue,
+        email: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "email")
+          ?.rawValue,
+        phone: subjectObs.find((obs) => obs.entityType === "contact" && obs.attribute === "phone")
+          ?.rawValue,
+        profileUrl: subjectObs.find(
+          (obs) => obs.entityType === "contact" && obs.attribute === "profile_url",
+        )?.rawValue,
         confidence: Number(nameObs.confidence),
         sourceDocumentId,
         subjectKey,
@@ -91,7 +101,8 @@ function collectPersonDrafts(
     drafts.push(
       sanitizePersonDraftContacts({
         name: mention.normalizedName || nameObs.rawValue,
-        normalizedName: nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
+        normalizedName:
+          nameObs.normalizedValue ?? normalizeName(mention.normalizedName || nameObs.rawValue),
         title: docObs.find(
           (obs) =>
             obs.entityType === "person" &&
@@ -246,7 +257,8 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
 
   const criteriaHash = hashRoleCriteria(run?.roleCriteria);
   const personSearchDoc = documents.find(
-    (document) => document.sourceKey === buildPersonSearchSourceKey(ctx.normalizedDomain, criteriaHash),
+    (document) =>
+      document.sourceKey === buildPersonSearchSourceKey(ctx.normalizedDomain, criteriaHash),
   );
 
   if (ctx.providerPeople?.people.length) {
@@ -496,9 +508,7 @@ export async function resolve(ctx: StageContext): Promise<StageResult> {
     }
 
     const signalObs = allObservations.filter(
-      (obs) =>
-        obs.entityType === "signal" &&
-        obs.sourceDocumentId === safeDraft.sourceDocumentId,
+      (obs) => obs.entityType === "signal" && obs.sourceDocumentId === safeDraft.sourceDocumentId,
     );
 
     for (const signal of signalObs) {

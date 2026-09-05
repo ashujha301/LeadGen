@@ -49,11 +49,7 @@ export async function getRunEventsAfterId(
   return getRunEventsAfterSequence(db, runId);
 }
 
-export async function listRecentRunEvents(
-  db: Db,
-  runId: string,
-  limit = 100,
-): Promise<RunEvent[]> {
+export async function listRecentRunEvents(db: Db, runId: string, limit = 100): Promise<RunEvent[]> {
   const events = await db.query.runEvents.findMany({
     where: eq(runEvents.runId, runId),
     orderBy: (table, { desc }) => [desc(table.sequence)],

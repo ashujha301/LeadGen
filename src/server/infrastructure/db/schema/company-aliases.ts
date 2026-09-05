@@ -18,10 +18,7 @@ export const companyAliases = pgTable(
   },
   (table) => [
     index("company_aliases_company_id_idx").on(table.companyId),
-    uniqueIndex("company_aliases_type_value_idx").on(
-      table.aliasType,
-      table.normalizedValue,
-    ),
+    uniqueIndex("company_aliases_type_value_idx").on(table.aliasType, table.normalizedValue),
   ],
 );
 

@@ -1,10 +1,4 @@
-import {
-  index,
-  jsonb,
-  numeric,
-  pgTable,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, jsonb, numeric, pgTable, uuid } from "drizzle-orm/pg-core";
 
 import { entityMatchDecisionEnum, matchEntityTypeEnum } from "./enums";
 import { timestamps } from "./helpers";

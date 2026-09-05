@@ -18,7 +18,10 @@ export function extractClientIp(headers: Headers, trustedProxyHops?: number): st
   const forwarded = headers.get("x-forwarded-for");
 
   if (forwarded) {
-    const parts = forwarded.split(",").map((part) => part.trim()).filter(Boolean);
+    const parts = forwarded
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
     const index = Math.max(0, parts.length - hops);
     return parts[index] ?? "unknown";
   }

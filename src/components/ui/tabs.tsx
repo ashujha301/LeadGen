@@ -39,7 +39,13 @@ export function Tabs({
   );
 }
 
-export function TabsList({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function TabsList({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={`inline-flex h-9 items-center rounded-md bg-surface p-1 text-muted ${className}`}

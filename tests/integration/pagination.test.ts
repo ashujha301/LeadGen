@@ -12,8 +12,7 @@ function paginate<T extends { id: string }>(
 ): PageResult<T> {
   const startIdx = cursor ? all.findIndex((item) => item.id === cursor) + 1 : 0;
   const page = all.slice(startIdx, startIdx + limit);
-  const nextCursor =
-    startIdx + limit < all.length ? (page.at(-1)?.id ?? null) : null;
+  const nextCursor = startIdx + limit < all.length ? (page.at(-1)?.id ?? null) : null;
   return { items: page, nextCursor };
 }
 

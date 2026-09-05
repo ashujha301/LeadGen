@@ -14,9 +14,7 @@ import { runStatusEnum } from "./enums";
 import { timestamps } from "./helpers";
 
 export type RoleCriteria = {
-  seniorities: Array<
-    "founder" | "owner" | "c_suite" | "vp" | "head" | "director" | "manager"
-  >;
+  seniorities: Array<"founder" | "owner" | "c_suite" | "vp" | "head" | "director" | "manager">;
   functions: Array<
     | "executive"
     | "sales"

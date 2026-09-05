@@ -58,17 +58,16 @@ async function recordConnectorAttempt(
     status,
     durationMs,
     errorCode:
-      result.status === "error"
-        ? result.error
-        : result.status === "disabled"
-          ? "disabled"
-          : null,
+      result.status === "error" ? result.error : result.status === "disabled" ? "disabled" : null,
     recordsReturned: recordsReturned ?? null,
     attempts: 1,
   });
 }
 
-async function persistRdap(ctx: StageContext, result: ConnectorResult<RdapDomainResult>): Promise<void> {
+async function persistRdap(
+  ctx: StageContext,
+  result: ConnectorResult<RdapDomainResult>,
+): Promise<void> {
   if (result.status !== "success") {
     return;
   }
@@ -114,7 +113,11 @@ async function persistCrustdataCompany(
   });
 
   if (upsert.state !== "already_completed") {
-    await persistMappedObservations(db, upsert.document.id, mapCrustdataToObservations(result.data));
+    await persistMappedObservations(
+      db,
+      upsert.document.id,
+      mapCrustdataToObservations(result.data),
+    );
     await sourcesRepo.updateExtractionStatus(db, upsert.document.id, "completed");
   }
 

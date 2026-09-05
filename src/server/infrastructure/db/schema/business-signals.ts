@@ -1,11 +1,4 @@
-import {
-  index,
-  numeric,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { timestamps } from "./helpers";
 import { companies } from "./companies";

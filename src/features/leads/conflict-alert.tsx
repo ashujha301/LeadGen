@@ -22,7 +22,9 @@ export function ConflictAlert({ conflicts }: ConflictAlertProps) {
           <div key={conflict.attribute} className="flex items-start gap-2 text-sm">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <span className="font-medium capitalize">{conflict.attribute.replace(/_/g, " ")}</span>
+              <span className="font-medium capitalize">
+                {conflict.attribute.replace(/_/g, " ")}
+              </span>
               <ul className="mt-1 list-inside list-disc text-red-200/80">
                 {conflict.values.map((value) => (
                   <li key={value}>{value}</li>

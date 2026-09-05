@@ -52,10 +52,9 @@ describe("company identity guards", () => {
 
 describe("same-company name dedup", () => {
   it("merges near-duplicate names at the same company", () => {
-    const match = findExistingPersonByNameAtCompany(
-      { normalizedName: "kuldeep singh rajpuit" },
-      [{ id: "p1", normalizedName: "kuldeep singh rajput" }],
-    );
+    const match = findExistingPersonByNameAtCompany({ normalizedName: "kuldeep singh rajpuit" }, [
+      { id: "p1", normalizedName: "kuldeep singh rajput" },
+    ]);
     expect(match).toBe("p1");
   });
 });
@@ -80,9 +79,8 @@ describe("lenient high value lead thresholds", () => {
 
 describe("role criteria title search terms", () => {
   it("expands default founder and c_suite chips into title filters", async () => {
-    const { roleCriteriaToTitleSearchTerms } = await import(
-      "@/server/domain/roles/title-search-terms"
-    );
+    const { roleCriteriaToTitleSearchTerms } =
+      await import("@/server/domain/roles/title-search-terms");
     const terms = roleCriteriaToTitleSearchTerms({
       seniorities: ["founder", "c_suite"],
       functions: [],

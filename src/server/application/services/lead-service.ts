@@ -38,7 +38,10 @@ function toNumber(value: string | number | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-async function buildLeadSummary(db: ReturnType<typeof getDb>, leadId: string): Promise<LeadSummary | null> {
+async function buildLeadSummary(
+  db: ReturnType<typeof getDb>,
+  leadId: string,
+): Promise<LeadSummary | null> {
   const lead = await leadsRepo.getLeadById(db, leadId);
   if (!lead) {
     return null;

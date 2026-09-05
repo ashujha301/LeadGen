@@ -84,7 +84,11 @@ export function DomainSearchForm() {
             required
           />
           <Button type="submit" disabled={loading || !domain}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
             <span className="ml-2">Search</span>
           </Button>
         </div>

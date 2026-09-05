@@ -78,9 +78,7 @@ export async function listHighValueCompanies(db: Db): Promise<HighValueCompanySu
   const activeRuns = await db
     .select({ normalizedDomain: searchRuns.normalizedDomain })
     .from(searchRuns)
-    .where(
-      sql`${searchRuns.status} NOT IN ('completed', 'failed', 'canceled')`,
-    );
+    .where(sql`${searchRuns.status} NOT IN ('completed', 'failed', 'canceled')`);
 
   const activeDomains = new Set(activeRuns.map((row) => row.normalizedDomain));
 

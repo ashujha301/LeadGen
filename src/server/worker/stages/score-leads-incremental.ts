@@ -3,7 +3,10 @@ import { and, eq, inArray } from "drizzle-orm";
 import { matchRoleWithTier } from "@/server/domain/roles/tier-matching";
 import { scoreLead } from "@/server/domain/scoring";
 import { SCORE_COMPONENT_KEYS } from "@/server/domain/scoring/score-config";
-import { shouldExcludeByEmployeeRange, hasEmployeeRangeBounds } from "@/server/domain/employee-range";
+import {
+  shouldExcludeByEmployeeRange,
+  hasEmployeeRangeBounds,
+} from "@/server/domain/employee-range";
 import {
   contactPoints,
   getDb,
@@ -50,9 +53,7 @@ export async function scoreLeadsIncremental(
 
   ctx.companyId = company.id;
 
-  if (
-    shouldExcludeByEmployeeRange(company.employeeCount, run?.icp?.employeeRange)
-  ) {
+  if (shouldExcludeByEmployeeRange(company.employeeCount, run?.icp?.employeeRange)) {
     const range = run?.icp?.employeeRange;
     const message = `Company headcount ${company.employeeCount} is outside employee filter ${range?.min ?? "…"}–${range?.max ?? "…"}; skipped lead creation`;
     await runsRepo.updateRunProgress(db, ctx.runId, {
@@ -260,8 +261,9 @@ export async function scoreLeadsIncremental(
     const leadInput = {
       icpFitScore: String(icpFitTotal),
       decisionAuthorityScore: String(
-        score.components.find((component) => component.key === SCORE_COMPONENT_KEYS.decisionAuthority)
-          ?.contribution ?? 0,
+        score.components.find(
+          (component) => component.key === SCORE_COMPONENT_KEYS.decisionAuthority,
+        )?.contribution ?? 0,
       ),
       businessSignalsScore: String(
         score.components.find((component) => component.key === SCORE_COMPONENT_KEYS.businessSignals)
@@ -283,7 +285,8 @@ export async function scoreLeadsIncremental(
       roleMatchTier: roleMatch.roleMatchTier,
       roleSimilarity: String(roleMatch.roleSimilarity),
       roleMatchFinal: roleMatch.roleMatchFinal,
-      enrichmentStatus: enrichmentStatus as "pending" | "matched" | "not_found" | "redacted" | "failed",
+      enrichmentStatus: enrichmentStatus as
+        "pending" | "matched" | "not_found" | "redacted" | "failed",
     };
 
     let lead = existingLead;

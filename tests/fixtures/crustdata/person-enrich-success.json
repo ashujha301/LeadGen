@@ -45,7 +45,9 @@
             }
           },
           "education": { "schools": [{ "school": "IIT Delhi", "degree": "B.Tech" }] },
-          "skills": { "professional_network_skills": ["Cybersecurity", "Mobile Security", "Leadership"] }
+          "skills": {
+            "professional_network_skills": ["Cybersecurity", "Mobile Security", "Leadership"]
+          }
         }
       }
     ]

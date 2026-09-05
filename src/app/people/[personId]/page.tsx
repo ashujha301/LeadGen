@@ -58,7 +58,10 @@ export default async function PersonDetailPage({
           <h2 className="mb-3 text-sm font-medium">Contacts</h2>
           <ul className="divide-y divide-[var(--border)]">
             {person.contacts.map((contact) => (
-              <li key={`${contact.type}-${contact.value}`} className="flex justify-between py-2 text-sm">
+              <li
+                key={`${contact.type}-${contact.value}`}
+                className="flex justify-between py-2 text-sm"
+              >
                 <span>
                   <Badge variant="secondary" className="mr-2 capitalize">
                     {contact.type}

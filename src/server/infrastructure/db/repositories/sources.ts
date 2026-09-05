@@ -98,10 +98,7 @@ export async function updateExtractionStatus(
   return document;
 }
 
-export async function getSourceDocumentsByRunId(
-  db: Db,
-  runId: string,
-): Promise<SourceDocument[]> {
+export async function getSourceDocumentsByRunId(db: Db, runId: string): Promise<SourceDocument[]> {
   return db.query.sourceDocuments.findMany({
     where: eq(sourceDocuments.runId, runId),
   });
@@ -116,10 +113,7 @@ export async function getSourceDocumentById(
   });
 }
 
-export async function createObservation(
-  db: Db,
-  input: NewObservation,
-): Promise<Observation> {
+export async function createObservation(db: Db, input: NewObservation): Promise<Observation> {
   const [observation] = await db.insert(observations).values(input).returning();
   if (!observation) {
     throw new Error("Failed to create observation");
@@ -127,10 +121,7 @@ export async function createObservation(
   return observation;
 }
 
-export async function createObservations(
-  db: Db,
-  inputs: NewObservation[],
-): Promise<Observation[]> {
+export async function createObservations(db: Db, inputs: NewObservation[]): Promise<Observation[]> {
   if (inputs.length === 0) {
     return [];
   }
@@ -167,10 +158,7 @@ export async function updateObservationNormalizedValue(
   observationId: string,
   normalizedValue: string,
 ): Promise<void> {
-  await db
-    .update(observations)
-    .set({ normalizedValue })
-    .where(eq(observations.id, observationId));
+  await db.update(observations).set({ normalizedValue }).where(eq(observations.id, observationId));
 }
 
 export async function getObservationsByRunId(db: Db, runId: string): Promise<Observation[]> {

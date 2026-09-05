@@ -16,13 +16,25 @@ export function TableBody({ children }: { children: ReactNode }) {
   return <tbody className="divide-y divide-[var(--border)]">{children}</tbody>;
 }
 
-export function TableRow({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function TableRow({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <tr className={`transition-colors hover:bg-surface-raised/50 ${className}`}>{children}</tr>
   );
 }
 
-export function TableHead({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function TableHead({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <th
       className={`h-10 px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-muted ${className}`}

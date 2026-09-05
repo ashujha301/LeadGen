@@ -1,8 +1,4 @@
-import type {
-  CrustdataCompanyData,
-  CrustdataPersonData,
-  CrustdataSearchProfile,
-} from "./schemas";
+import type { CrustdataCompanyData, CrustdataPersonData, CrustdataSearchProfile } from "./schemas";
 import type {
   CrustdataCompanyResult,
   CrustdataPeopleSearchResult,
@@ -13,16 +9,14 @@ import type {
   MappedObservation,
 } from "../types";
 
-function coercePersonRef(
-  person: {
-    crustdata_person_id?: string;
-    name?: string;
-    title?: string | null;
-    professional_network_profile_url?: string | null;
-    email?: string | null;
-    match_score?: number;
-  },
-): CrustdataPersonRef {
+function coercePersonRef(person: {
+  crustdata_person_id?: string;
+  name?: string;
+  title?: string | null;
+  professional_network_profile_url?: string | null;
+  email?: string | null;
+  match_score?: number;
+}): CrustdataPersonRef {
   return {
     crustdata_person_id: person.crustdata_person_id,
     name: (person.name ?? "").trim(),
@@ -55,7 +49,9 @@ export function mapCompanyDataToResult(
     description: data.basic_info?.description ?? null,
     matchScore: matchScore ?? null,
     providerUpdatedAt: data.updated_at ?? null,
-    founders: filterNamedPeople(data.people?.founders ?? []).map((person) => coercePersonRef(person)),
+    founders: filterNamedPeople(data.people?.founders ?? []).map((person) =>
+      coercePersonRef(person),
+    ),
     cxos: filterNamedPeople(data.people?.cxos ?? []).map((person) => coercePersonRef(person)),
     decisionMakers: filterNamedPeople(data.people?.decision_makers ?? []).map((person) =>
       coercePersonRef(person),
@@ -64,7 +60,9 @@ export function mapCompanyDataToResult(
   };
 }
 
-export function mapSearchProfileToPersonResult(profile: CrustdataSearchProfile): CrustdataPersonResult | null {
+export function mapSearchProfileToPersonResult(
+  profile: CrustdataSearchProfile,
+): CrustdataPersonResult | null {
   const name = profile.basic_profile?.name;
   if (!name) {
     return null;
@@ -75,8 +73,7 @@ export function mapSearchProfileToPersonResult(profile: CrustdataSearchProfile):
     name,
     title: profile.basic_profile?.current_title ?? null,
     email: null,
-    linkedinUrl:
-      profile.social_handles?.professional_network_identifier?.profile_url ?? null,
+    linkedinUrl: profile.social_handles?.professional_network_identifier?.profile_url ?? null,
     matchScore: null,
     raw: profile,
   };
@@ -115,8 +112,7 @@ export function mapPersonDataToEnrichResult(
 ): CrustdataPersonEnrichResult {
   const current = data.experience?.employment_details?.current ?? [];
   const past = data.experience?.employment_details?.past ?? [];
-  const returnedUrl =
-    data.social_handles?.professional_network_identifier?.profile_url ?? null;
+  const returnedUrl = data.social_handles?.professional_network_identifier?.profile_url ?? null;
 
   return {
     crustdataPersonId: data.crustdata_person_id ?? null,
@@ -128,10 +124,7 @@ export function mapPersonDataToEnrichResult(
     matchedOn: matchedOn ?? null,
     providerExperienceYears: data.experience?.years_of_experience_raw ?? null,
     providerUpdatedAt: data.updated_at ?? null,
-    experience: [
-      ...mapEmploymentDetails(current, true),
-      ...mapEmploymentDetails(past, false),
-    ],
+    experience: [...mapEmploymentDetails(current, true), ...mapEmploymentDetails(past, false)],
     education: (data.education?.schools ?? []).map((school) => ({
       school: school.school,
       degree: school.degree ?? null,

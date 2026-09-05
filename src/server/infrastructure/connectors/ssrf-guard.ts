@@ -21,7 +21,9 @@ function isPrivateIp(address: string): boolean {
   return PRIVATE_IPV4_RANGES.some((pattern) => pattern.test(address));
 }
 
-export function validateUrl(urlString: string): { ok: true; url: URL } | { ok: false; reason: string } {
+export function validateUrl(
+  urlString: string,
+): { ok: true; url: URL } | { ok: false; reason: string } {
   let url: URL;
 
   try {

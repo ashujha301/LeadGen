@@ -66,9 +66,7 @@ function resolveRoleCriteria(value: IcpFiltersValue): RoleCriteria {
 
 function chipClass(selected: boolean) {
   return `rounded px-2 py-0.5 text-xs capitalize transition-colors ${
-    selected
-      ? "bg-accent/20 text-accent-light"
-      : "bg-surface-raised text-muted hover:text-white"
+    selected ? "bg-accent/20 text-accent-light" : "bg-surface-raised text-muted hover:text-white"
   }`;
 }
 
@@ -163,9 +161,7 @@ export function IcpFilters({ value, onChange, availableRoles = [], compact }: Ic
             id="icp-industry"
             placeholder="B2B SaaS"
             value={industry}
-            onChange={(e) =>
-              update({ industries: e.target.value ? [e.target.value] : undefined })
-            }
+            onChange={(e) => update({ industries: e.target.value ? [e.target.value] : undefined })}
           />
         </div>
         <div className="space-y-1">
@@ -176,9 +172,7 @@ export function IcpFilters({ value, onChange, availableRoles = [], compact }: Ic
             id="icp-location"
             placeholder="United States"
             value={location}
-            onChange={(e) =>
-              update({ locations: e.target.value ? [e.target.value] : undefined })
-            }
+            onChange={(e) => update({ locations: e.target.value ? [e.target.value] : undefined })}
           />
         </div>
         <div className="space-y-1">

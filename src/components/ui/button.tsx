@@ -1,4 +1,10 @@
-import { cloneElement, forwardRef, isValidElement, type ButtonHTMLAttributes, type ReactElement } from "react";
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+} from "react";
 
 type ButtonVariant = "default" | "outline" | "ghost" | "destructive";
 type ButtonSize = "default" | "sm" | "lg";

@@ -37,10 +37,7 @@ function hasLinkedinProfileFilter() {
   );
 }
 
-export async function createLeadCandidate(
-  db: Db,
-  input: NewLeadCandidate,
-): Promise<LeadCandidate> {
+export async function createLeadCandidate(db: Db, input: NewLeadCandidate): Promise<LeadCandidate> {
   const [lead] = await db
     .insert(leadCandidates)
     .values(input)
@@ -117,10 +114,7 @@ export async function updateLeadCandidate(
   return lead;
 }
 
-export async function getLeadById(
-  db: Db,
-  leadId: string,
-): Promise<LeadWithRelations | undefined> {
+export async function getLeadById(db: Db, leadId: string): Promise<LeadWithRelations | undefined> {
   return db.query.leadCandidates.findFirst({
     where: eq(leadCandidates.id, leadId),
     with: {
@@ -163,24 +157,16 @@ export async function getLeadsByRunId(
 
     if (cursorLead) {
       if (scope === "all") {
-        conditions.push(
-          lt(leadCandidates.finalScore, cursorLead.finalScore),
-        );
+        conditions.push(lt(leadCandidates.finalScore, cursorLead.finalScore));
       } else {
-        conditions.push(
-          lt(leadCandidates.finalScore, cursorLead.finalScore),
-        );
+        conditions.push(lt(leadCandidates.finalScore, cursorLead.finalScore));
       }
     }
   }
 
   const orderBy =
     scope === "all"
-      ? [
-          desc(leadCandidates.roleMatch),
-          desc(leadCandidates.finalScore),
-          desc(leadCandidates.id),
-        ]
+      ? [desc(leadCandidates.roleMatch), desc(leadCandidates.finalScore), desc(leadCandidates.id)]
       : [desc(leadCandidates.finalScore), desc(leadCandidates.id)];
 
   const leads = await db.query.leadCandidates.findMany({
@@ -205,9 +191,7 @@ export async function deleteScoreComponentsByLeadId(
   db: Db,
   leadCandidateId: string,
 ): Promise<void> {
-  await db
-    .delete(scoreComponents)
-    .where(eq(scoreComponents.leadCandidateId, leadCandidateId));
+  await db.delete(scoreComponents).where(eq(scoreComponents.leadCandidateId, leadCandidateId));
 }
 
 export async function countLeadsByRunId(

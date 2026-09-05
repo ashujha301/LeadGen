@@ -46,10 +46,7 @@ export const companies = pgTable(
   (table) => [
     uniqueIndex("companies_normalized_domain_idx").on(table.normalizedDomain),
     index("companies_normalized_name_idx").on(table.normalizedName),
-    index("companies_name_trgm_idx").using(
-      "gin",
-      sql`${table.normalizedName} gin_trgm_ops`,
-    ),
+    index("companies_name_trgm_idx").using("gin", sql`${table.normalizedName} gin_trgm_ops`),
   ],
 );
 

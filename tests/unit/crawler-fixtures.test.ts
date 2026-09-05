@@ -74,16 +74,12 @@ describe("company page fixtures", () => {
       .filter((obs) => obs.entityType === "person" && obs.attribute === "name")
       .map((obs) => obs.rawValue);
 
-    expect(personNames).toEqual(
-      expect.arrayContaining(["Tejas Pandit", "Ravi Chitloor"]),
-    );
+    expect(personNames).toEqual(expect.arrayContaining(["Tejas Pandit", "Ravi Chitloor"]));
     expect(new Set(personNames).size).toBeGreaterThanOrEqual(2);
     expect(
       observations.filter(
         (obs) =>
-          obs.entityType === "person" &&
-          obs.attribute === "title" &&
-          obs.rawValue === "Co-Founder",
+          obs.entityType === "person" && obs.attribute === "title" && obs.rawValue === "Co-Founder",
       ).length,
     ).toBeGreaterThanOrEqual(2);
   });

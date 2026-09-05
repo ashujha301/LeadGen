@@ -51,7 +51,11 @@ export async function resolveMissingLinkedInProfiles(ctx: StageContext): Promise
       connectorName: "crustdata_person_search",
       endpoint: "/person/search",
       status:
-        result.status === "success" ? "success" : result.status === "disabled" ? "skipped" : "failed",
+        result.status === "success"
+          ? "success"
+          : result.status === "disabled"
+            ? "skipped"
+            : "failed",
       durationMs: Date.now() - startedAt,
       errorCode: result.status === "error" ? result.error : null,
       recordsReturned: result.status === "success" && result.data ? 1 : 0,

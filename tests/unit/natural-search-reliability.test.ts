@@ -48,9 +48,9 @@ describe("natural search reliability", () => {
       durationMs: 5,
     });
 
-    await expect(
-      runNaturalSearch({ query: "asdf" }, { db: {} as never }),
-    ).rejects.toMatchObject({ code: "SEARCH_NOT_UNDERSTOOD" });
+    await expect(runNaturalSearch({ query: "asdf" }, { db: {} as never })).rejects.toMatchObject({
+      code: "SEARCH_NOT_UNDERSTOOD",
+    });
   });
 
   it("rejects empty intent without executing search", async () => {
@@ -61,9 +61,9 @@ describe("natural search reliability", () => {
       durationMs: 1,
     });
 
-    await expect(
-      runNaturalSearch({ query: "hello" }, { db: {} as never }),
-    ).rejects.toMatchObject({ code: "SEARCH_NOT_UNDERSTOOD" });
+    await expect(runNaturalSearch({ query: "hello" }, { db: {} as never })).rejects.toMatchObject({
+      code: "SEARCH_NOT_UNDERSTOOD",
+    });
   });
 
   it("sanitizes leads/timeline/connections intents", () => {

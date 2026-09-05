@@ -1,12 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  index,
-  numeric,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 import { timestamps } from "./helpers";
 import { searchRuns } from "./search-runs";
@@ -32,10 +25,7 @@ export const people = pgTable(
     index("people_normalized_name_idx").on(table.normalizedName),
     index("people_profile_url_idx").on(table.profileUrl),
     index("people_merged_into_person_id_idx").on(table.mergedIntoPersonId),
-    index("people_name_trgm_idx").using(
-      "gin",
-      sql`${table.normalizedName} gin_trgm_ops`,
-    ),
+    index("people_name_trgm_idx").using("gin", sql`${table.normalizedName} gin_trgm_ops`),
   ],
 );
 

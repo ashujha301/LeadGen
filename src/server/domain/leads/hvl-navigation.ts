@@ -21,9 +21,9 @@ export function computeLeadNeighbors(
   };
 }
 
-export function sortHighValueLeadsByScoreThenId<T extends { id: string; finalScore: number | string }>(
-  leads: T[],
-): T[] {
+export function sortHighValueLeadsByScoreThenId<
+  T extends { id: string; finalScore: number | string },
+>(leads: T[]): T[] {
   return [...leads].sort(
     (a, b) => Number(b.finalScore) - Number(a.finalScore) || b.id.localeCompare(a.id),
   );

@@ -53,7 +53,10 @@ export default async function CompanyDetailPage({
           <h2 className="mb-2 text-sm font-medium">Aliases</h2>
           <div className="flex flex-wrap gap-1.5">
             {company.aliases.map((alias) => (
-              <span key={alias} className="rounded bg-surface-raised px-2 py-0.5 text-xs text-muted">
+              <span
+                key={alias}
+                className="rounded bg-surface-raised px-2 py-0.5 text-xs text-muted"
+              >
                 {alias}
               </span>
             ))}
@@ -66,7 +69,10 @@ export default async function CompanyDetailPage({
           <h2 className="mb-3 text-sm font-medium">Business signals</h2>
           <ul className="divide-y divide-[var(--border)]">
             {company.businessSignals.map((signal) => (
-              <li key={`${signal.type}-${signal.value}`} className="flex justify-between py-2 text-sm">
+              <li
+                key={`${signal.type}-${signal.value}`}
+                className="flex justify-between py-2 text-sm"
+              >
                 <span>
                   <span className="font-medium">{signal.type}</span>
                   <span className="ml-2 text-muted">{signal.value}</span>
@@ -89,7 +95,10 @@ export default async function CompanyDetailPage({
             {company.people.map((person) => (
               <li key={person.id} className="flex items-center justify-between py-2 text-sm">
                 <div>
-                  <Link href={`/people/${person.id}`} className="font-medium text-accent hover:underline">
+                  <Link
+                    href={`/people/${person.id}`}
+                    className="font-medium text-accent hover:underline"
+                  >
                     {person.name}
                   </Link>
                   {person.title && <span className="ml-2 text-muted">{person.title}</span>}
@@ -112,9 +121,7 @@ export default async function CompanyDetailPage({
         />
       </section>
 
-      <p className="text-xs text-muted">
-        Updated {formatRelativeTime(company.updatedAt)}
-      </p>
+      <p className="text-xs text-muted">Updated {formatRelativeTime(company.updatedAt)}</p>
     </div>
   );
 }

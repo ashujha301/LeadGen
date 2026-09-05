@@ -25,6 +25,14 @@ export {
 } from "./entity-resolution/person";
 
 export {
+  isUsableEmail,
+  isUsablePhone,
+  isUsableProfileUrl,
+  sanitizePersonContacts,
+  sanitizePersonDraftContacts,
+} from "./entity-resolution/contact-identity";
+
+export {
   classifyMatchDecision,
   matchPersons,
   type MatchDecision,

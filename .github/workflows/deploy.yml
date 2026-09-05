@@ -111,17 +111,22 @@ jobs:
             --project "${PROJECT_ID}" \
             --zone "${ZONE}" \
             --tunnel-through-iap \
+            --quiet \
             --command "set -euo pipefail
               APP_DIR='${APP_DIR}'
               APP_CHECKOUT=\"\${APP_DIR}/app\"
               SHA='${IMAGE_TAG}'
               WEB_IMAGE='${WEB_IMAGE}'
               WORKER_IMAGE='${WORKER_IMAGE}'
+              PROJECT_ID='${PROJECT_ID}'
 
               if [[ ! -d \"\${APP_CHECKOUT}/.git\" ]]; then
                 echo \"[deploy] Missing public git checkout at \${APP_CHECKOUT}\" >&2
                 exit 1
               fi
+
+              # Repo is owned by root; OS Login deploy user needs an explicit safe.directory.
+              git config --global --add safe.directory \"\${APP_CHECKOUT}\"
 
               cd \"\${APP_CHECKOUT}\"
 
@@ -136,6 +141,7 @@ jobs:
 
               sudo env \
                 APP_DIR=\"\${APP_DIR}\" \
+                GCP_PROJECT_ID=\"\${PROJECT_ID}\" \
                 IMAGE_TAG=\"\${SHA}\" \
                 WEB_IMAGE=\"\${WEB_IMAGE}\" \
                 WORKER_IMAGE=\"\${WORKER_IMAGE}\" \
@@ -158,10 +164,12 @@ jobs:
             --project "${PROJECT_ID}" \
             --zone "${ZONE}" \
             --tunnel-through-iap \
+            --quiet \
             --command "set -euo pipefail
               APP_DIR='${APP_DIR}'
               sudo env \
                 APP_DIR=\"\${APP_DIR}\" \
+                GCP_PROJECT_ID='${PROJECT_ID}' \
                 IMAGE_TAG='${IMAGE_TAG}' \
                 WEB_IMAGE='${WEB_IMAGE}' \
                 WORKER_IMAGE='${WORKER_IMAGE}' \

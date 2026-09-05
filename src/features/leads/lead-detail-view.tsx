@@ -75,7 +75,12 @@ export function LeadDetailView({ lead, graph, headerSlot }: LeadDetailViewProps)
           <EvidencePanel evidence={lead.evidence} />
         </TabsContent>
         <TabsContent value="timeline" className="rounded-md border border-[var(--border)] bg-surface p-4">
-          <EmploymentTimeline employments={lead.employmentHistory} />
+          <EmploymentTimeline
+            employments={lead.employmentHistory}
+            timelineStatus={lead.timelineStatus}
+            calculatedExperienceMonths={lead.calculatedExperienceMonths}
+            providerExperienceYears={lead.providerExperienceYears}
+          />
         </TabsContent>
         <TabsContent value="graph" className="rounded-md border border-[var(--border)] bg-surface p-4">
           {graph ? <RelationshipGraph graph={graph} /> : <p className="text-sm text-muted">Graph unavailable.</p>}

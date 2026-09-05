@@ -57,9 +57,23 @@ export {
   searchIntentSchema,
   naturalSearchRequestSchema,
   naturalSearchResponseSchema,
+  leadsSearchIntentSchema,
+  timelineSearchIntentSchema,
+  connectionsSearchIntentSchema,
+  leadSearchResultSchema,
+  personTimelineResultSchema,
+  connectionSearchResultSchema,
+  timelineStatusSchema,
   type SearchIntent,
+  type LeadsSearchIntent,
+  type TimelineSearchIntent,
+  type ConnectionsSearchIntent,
   type NaturalSearchRequest,
   type NaturalSearchResponse,
+  type LeadSearchResult,
+  type PersonTimelineResult,
+  type ConnectionSearchResult,
+  type TimelineStatus,
 } from "./search-intent";
 
 export {

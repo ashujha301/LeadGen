@@ -86,6 +86,7 @@ function mapEmploymentDetails(
   entries: Array<{
     position_id?: string | number;
     name: string;
+    crustdata_company_id?: string;
     company_website_domain?: string | null;
     company_professional_network_url?: string | null;
     title?: string | null;
@@ -96,6 +97,7 @@ function mapEmploymentDetails(
 ): CrustdataPersonExperience[] {
   return entries.map((entry) => ({
     providerEmploymentId: entry.position_id != null ? String(entry.position_id) : null,
+    crustdataCompanyId: entry.crustdata_company_id ?? null,
     companyName: entry.name,
     companyDomain: entry.company_website_domain ?? null,
     companyLinkedinUrl: entry.company_professional_network_url ?? null,
@@ -109,9 +111,12 @@ function mapEmploymentDetails(
 export function mapPersonDataToEnrichResult(
   data: CrustdataPersonData,
   status: "matched" | "not_found" | "redacted",
+  matchedOn?: string | null,
 ): CrustdataPersonEnrichResult {
   const current = data.experience?.employment_details?.current ?? [];
   const past = data.experience?.employment_details?.past ?? [];
+  const returnedUrl =
+    data.social_handles?.professional_network_identifier?.profile_url ?? null;
 
   return {
     crustdataPersonId: data.crustdata_person_id ?? null,
@@ -119,7 +124,8 @@ export function mapPersonDataToEnrichResult(
     name: data.basic_profile?.name ?? null,
     headline: data.basic_profile?.headline ?? null,
     location: data.basic_profile?.location ?? null,
-    linkedinUrl: data.social_handles?.professional_network_identifier?.profile_url ?? null,
+    linkedinUrl: returnedUrl ?? matchedOn ?? null,
+    matchedOn: matchedOn ?? null,
     providerExperienceYears: data.experience?.years_of_experience_raw ?? null,
     providerUpdatedAt: data.updated_at ?? null,
     experience: [

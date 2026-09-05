@@ -91,7 +91,7 @@ export async function explainLead(
     };
   }
 
-  if (result.status === "error") {
+  if (result.status === "error" || result.status === "timeout") {
     return {
       status: "error",
       explanation: fallback,

@@ -1,0 +1,66 @@
+[
+  {
+    "matched_on": "https://www.linkedin.com/in/subhohalder",
+    "match_type": "professional_network_profile_url",
+    "match_status": "matched",
+    "matches": [
+      {
+        "confidence_score": 1,
+        "person_data": {
+          "crustdata_person_id": 9001,
+          "updated_at": "2025-08-20T14:30:00Z",
+          "basic_profile": {
+            "name": "Subho Halder",
+            "headline": "Founder at Appknox",
+            "location": {
+              "raw": "Bengaluru, Karnataka, India",
+              "city": "Bengaluru",
+              "state": "Karnataka",
+              "country": "India"
+            }
+          },
+          "social_handles": {
+            "professional_network_identifier": {
+              "profile_url": "https://www.linkedin.com/in/subhohalder"
+            }
+          },
+          "experience": {
+            "years_of_experience_raw": 14,
+            "employment_details": {
+              "current": [
+                {
+                  "position_id": "emp-subho-1",
+                  "name": "Appknox",
+                  "crustdata_company_id": 501,
+                  "company_website_domain": "appknox.com",
+                  "company_professional_network_url": "https://www.linkedin.com/company/appknox-security",
+                  "title": "Founder & CTO",
+                  "start_date": "2014-01-15T00:00:00Z",
+                  "end_date": null
+                }
+              ],
+              "past": [
+                {
+                  "position_id": "emp-subho-2",
+                  "name": "Previous Co",
+                  "company_website_domain": null,
+                  "title": "Engineer",
+                  "start_date": "2010-06-01",
+                  "end_date": "2013-12-31T00:00:00Z"
+                },
+                {
+                  "position_id": "emp-subho-3",
+                  "name": "Another Co",
+                  "company_website_domain": "another.example",
+                  "title": "Intern",
+                  "start_date": "2009-01-01",
+                  "end_date": "2010-05-01"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+]

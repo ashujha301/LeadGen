@@ -63,6 +63,7 @@ export type CrustdataPersonResult = {
 
 export type CrustdataPersonExperience = {
   providerEmploymentId: string | null;
+  crustdataCompanyId: string | null;
   companyName: string;
   companyDomain: string | null;
   companyLinkedinUrl: string | null;
@@ -72,19 +73,29 @@ export type CrustdataPersonExperience = {
   endDate: string | null;
 };
 
+export type CrustdataPersonEnrichStatus =
+  | "matched"
+  | "not_found"
+  | "redacted"
+  | "invalid"
+  | "failed";
+
 export type CrustdataPersonEnrichResult = {
   crustdataPersonId: string | null;
-  status: "matched" | "not_found" | "redacted";
+  status: CrustdataPersonEnrichStatus;
   name: string | null;
   headline: string | null;
   location: string | null;
   linkedinUrl: string | null;
+  matchedOn: string | null;
   providerExperienceYears: number | null;
   providerUpdatedAt: string | null;
   experience: CrustdataPersonExperience[];
   education: Array<{ school?: string; degree?: string | null }>;
   skills: string[];
   raw: unknown;
+  schemaFailurePath?: string;
+  schemaFailureType?: string;
 };
 
 export type CrustdataPeopleSearchResult = {

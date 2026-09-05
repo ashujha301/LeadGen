@@ -16,6 +16,38 @@ type NaturalSearchProps = {
   compact?: boolean;
 };
 
+function InterpretationChips({ response }: { response: NaturalSearchResponse }) {
+  const { intent } = response.interpretation;
+  const chips: string[] = [`mode:${intent.mode}`];
+
+  if (intent.mode === "leads") {
+    if (intent.roles?.length) chips.push(`roles:${intent.roles.join(",")}`);
+    if (intent.company) chips.push(`company:${intent.company}`);
+    if (intent.scoreThreshold !== undefined) chips.push(`score>=${intent.scoreThreshold}`);
+    if (intent.confidenceThreshold !== undefined) {
+      chips.push(`confidence>=${intent.confidenceThreshold}`);
+    }
+  } else if (intent.mode === "timeline") {
+    if (intent.personName) chips.push(`person:${intent.personName}`);
+    if (intent.previousCompany) chips.push(`previous:${intent.previousCompany}`);
+    if (intent.currentCompany) chips.push(`current:${intent.currentCompany}`);
+  } else {
+    chips.push(`companyA:${intent.companyA}`);
+    if (intent.companyB) chips.push(`companyB:${intent.companyB}`);
+    if (intent.minOverlapDays) chips.push(`overlap>=${intent.minOverlapDays}d`);
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {chips.map((chip) => (
+        <Badge key={chip} variant="secondary">
+          {chip}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
 export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,6 +71,15 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
       setLoading(false);
     }
   }
+
+  const itemCount =
+    results?.result.kind === "leads"
+      ? results.result.items.length
+      : results?.result.kind === "timelines"
+        ? results.result.items.length
+        : results?.result.kind === "connections"
+          ? results.result.items.length
+          : 0;
 
   return (
     <div className={`space-y-3 ${compact ? "" : "rounded-md border border-[var(--border)] bg-surface p-4"}`}>
@@ -72,30 +113,93 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
 
       {results && (
         <div className="space-y-2">
+          <InterpretationChips response={results} />
           <p className="text-xs text-muted">
-            {results.results.length} result{results.results.length === 1 ? "" : "s"}
-            {results.intent.sortBy && ` · sorted by ${results.intent.sortBy}`}
+            {itemCount} result{itemCount === 1 ? "" : "s"} · {results.interpretation.summary}
           </p>
-          {results.results.length === 0 ? (
-            <p className="text-sm text-muted">No leads matched your query.</p>
-          ) : (
-            <ul className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)]">
-              {results.results.map((result) => (
-                <li key={result.leadId} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <div>
-                    <Link href={`/leads/${result.leadId}`} className="font-medium text-accent hover:underline">
-                      {result.personName}
-                    </Link>
-                    <span className="ml-2 text-muted">{result.companyName}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge>{formatScore(result.score)}</Badge>
-                    <span className="text-xs text-muted">{formatPercent(result.confidence)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+
+          {results.result.kind === "leads" &&
+            (results.result.items.length === 0 ? (
+              <p className="text-sm text-muted">No leads matched your query.</p>
+            ) : (
+              <ul className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)]">
+                {results.result.items.map((result) => (
+                  <li key={result.leadId} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div>
+                      <Link href={`/leads/${result.leadId}`} className="font-medium text-accent hover:underline">
+                        {result.personName}
+                      </Link>
+                      <span className="ml-2 text-muted">{result.companyName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge>{formatScore(result.score)}</Badge>
+                      <span className="text-xs text-muted">{formatPercent(result.confidence)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ))}
+
+          {results.result.kind === "timelines" &&
+            (results.result.items.length === 0 ? (
+              <p className="text-sm text-muted">No employment timelines matched.</p>
+            ) : (
+              <ul className="space-y-3">
+                {results.result.items.map((item) => (
+                  <li key={item.personId} className="rounded-md border border-[var(--border)] p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        {item.leadId ? (
+                          <Link href={`/leads/${item.leadId}`} className="font-medium text-accent hover:underline">
+                            {item.personName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium">{item.personName}</span>
+                        )}
+                      </div>
+                      <Badge variant="secondary">{item.timelineStatus}</Badge>
+                    </div>
+                    {item.timelineStatus !== "available" ? (
+                      <p className="mt-2 text-muted">
+                        Timeline unavailable ({item.timelineStatus.replaceAll("_", " ")}).
+                      </p>
+                    ) : (
+                      <ul className="mt-2 space-y-1 text-muted">
+                        {item.employments.map((employment, index) => (
+                          <li key={`${item.personId}-${index}`}>
+                            {employment.companyName}
+                            {employment.title ? ` · ${employment.title}` : ""}
+                            {employment.isCurrent ? " · current" : ""}
+                            {employment.startDate || employment.endDate
+                              ? ` · ${employment.startDate ?? "?"} → ${employment.endDate ?? "present"}`
+                              : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ))}
+
+          {results.result.kind === "connections" &&
+            (results.result.items.length === 0 ? (
+              <p className="text-sm text-muted">No overlapping employments matched.</p>
+            ) : (
+              <ul className="divide-y divide-[var(--border)] rounded-md border border-[var(--border)]">
+                {results.result.items.map((item, index) => (
+                  <li key={`${item.personA.id}-${item.personB.id}-${index}`} className="px-3 py-2 text-sm">
+                    <span className="font-medium">{item.personA.name}</span>
+                    <span className="text-muted"> overlapped with </span>
+                    <span className="font-medium">{item.personB.name}</span>
+                    <span className="text-muted">
+                      {" "}
+                      at {item.company.name} for {item.overlapDays} days
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ))}
         </div>
       )}
     </div>

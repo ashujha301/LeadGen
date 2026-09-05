@@ -80,6 +80,9 @@ export const leadDetailSchema = leadSummarySchema.extend({
       employerDomain: z.string().nullable().optional(),
     }),
   ),
+  timelineStatus: z
+    .enum(["available", "no_history", "not_found", "redacted", "failed"])
+    .optional(),
   totalExperienceYears: z.number().nullable().optional(),
   calculatedExperienceMonths: z.number().nullable().optional(),
   providerExperienceYears: z.number().nullable().optional(),

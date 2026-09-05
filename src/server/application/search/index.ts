@@ -20,6 +20,6 @@ export {
 
 export {
   runNaturalSearch,
-  parseAndSearch,
+  NaturalSearchError,
   type NaturalSearchOptions,
 } from "./natural-search";

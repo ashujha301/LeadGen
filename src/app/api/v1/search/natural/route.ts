@@ -5,6 +5,7 @@ import { jsonError, jsonSuccess } from "@/shared/utils/api-response";
 import { parseJsonBody, withRequestGuard } from "@/server/security/request-guard";
 import { checkNaturalSearchLimit } from "@/server/security/rate-limit";
 import { searchService } from "@/server/application/services/search-service";
+import { NaturalSearchError } from "@/server/application/search/natural-search";
 
 export const POST = withRequestGuard(async (request, requestId, clientKey) => {
   const limit = checkNaturalSearchLimit(clientKey);
@@ -25,6 +26,23 @@ export const POST = withRequestGuard(async (request, requestId, clientKey) => {
     );
   }
 
-  const result = await searchService.naturalSearch(parsed.data);
-  return jsonSuccess(result, requestId);
+  try {
+    const result = await searchService.naturalSearch(parsed.data);
+    return jsonSuccess(result, requestId);
+  } catch (error) {
+    if (error instanceof NaturalSearchError) {
+      const status =
+        error.code === "AI_UNAVAILABLE"
+          ? 503
+          : error.code === "UPSTREAM_TIMEOUT"
+            ? 504
+            : error.code === "AMBIGUOUS_PERSON"
+              ? 409
+              : error.code === "NOT_FOUND"
+                ? 404
+                : 422;
+      return jsonError(error.code, error.message, requestId, status, error.details);
+    }
+    throw error;
+  }
 });

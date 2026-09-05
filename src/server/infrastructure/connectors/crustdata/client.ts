@@ -19,7 +19,7 @@ import {
 } from "./rate-limiter";
 import {
   crustdataCompanyEnrichResponseSchema,
-  crustdataPersonEnrichResponseSchema,
+  crustdataPersonEnrichEntrySchema,
   crustdataPersonSearchResponseSchema,
 } from "./schemas";
 import type {
@@ -29,6 +29,7 @@ import type {
   CrustdataPersonEnrichResult,
   CrustdataPersonResult,
 } from "../types";
+import type { ZodError } from "zod";
 
 export type CrustdataRequestMeta = {
   endpoint: string;
@@ -167,9 +168,16 @@ async function fetchWithRetry<T>(
           const creditsUsed = readCreditsHeader(response.headers);
 
           if (response.status === 400) {
+            const errorBody = await response.json().catch(() => null);
+            const sanitized = sanitizeCrustdataError(errorBody);
+            console.warn(
+              `[crustdata] http_400 endpoint=${options.endpoint} reason=${sanitized.reason} type=${sanitized.type} requestId=${sanitized.requestId} durationMs=${durationMs} attempts=${attempts} credits=${creditsUsed ?? "n/a"} fields=${summarizeRequestedFields(options.body)}`,
+            );
             return {
               kind: "error" as const,
-              error: `Bad request (${response.status})`,
+              error: sanitized.reason
+                ? `Bad request (${response.status}): ${sanitized.reason}`
+                : `Bad request (${response.status})`,
               meta: buildMeta(options.endpoint, response.status, durationMs, attempts, 0, "miss", creditsUsed),
             };
           }
@@ -431,29 +439,112 @@ function buildPersonNameSearchBody(name: string, domain: string): Record<string,
   };
 }
 
-function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult[] {
-  const parsed = crustdataPersonEnrichResponseSchema.parse(payload);
-  return parsed.map((entry) => {
-    const status = entry.match_status ?? "matched";
-    const match = entry.matches[0];
-    if (!match) {
-      return {
-        crustdataPersonId: null,
-        status,
-        name: null,
-        headline: null,
-        location: null,
-        linkedinUrl: null,
-        providerExperienceYears: null,
-        providerUpdatedAt: null,
-        experience: [],
-        education: [],
-        skills: [],
-        raw: entry,
-      };
+function emptyEnrichResult(
+  status: CrustdataPersonEnrichResult["status"],
+  raw: unknown,
+  extras: Partial<CrustdataPersonEnrichResult> = {},
+): CrustdataPersonEnrichResult {
+  return {
+    crustdataPersonId: null,
+    status,
+    name: null,
+    headline: null,
+    location: null,
+    linkedinUrl: null,
+    matchedOn: null,
+    providerExperienceYears: null,
+    providerUpdatedAt: null,
+    experience: [],
+    education: [],
+    skills: [],
+    raw,
+    ...extras,
+  };
+}
+
+function describeZodFailure(error: ZodError): { path: string; type: string } {
+  const issue = error.issues[0] as
+    | { path?: Array<string | number>; received?: unknown; code?: string }
+    | undefined;
+  return {
+    path: issue?.path?.join(".") || "unknown",
+    type: String(issue?.received ?? issue?.code ?? "unknown"),
+  };
+}
+
+export function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult[] {
+  if (!Array.isArray(payload)) {
+    throw new Error("Person enrich response must be an array");
+  }
+
+  return payload.map((entry) => {
+    const parsed = crustdataPersonEnrichEntrySchema.safeParse(entry);
+    if (!parsed.success) {
+      const failure = describeZodFailure(parsed.error);
+      console.warn(
+        `[crustdata] schema_failure path=${failure.path} type=${failure.type}`,
+      );
+      return emptyEnrichResult("failed", entry, {
+        schemaFailurePath: failure.path,
+        schemaFailureType: failure.type,
+      });
     }
-    return mapPersonDataToEnrichResult(match.person_data, status);
+
+    const status = parsed.data.match_status ?? "matched";
+    const match = parsed.data.matches[0];
+    if (!match) {
+      return emptyEnrichResult(status, parsed.data, {
+        linkedinUrl: parsed.data.matched_on ?? null,
+        matchedOn: parsed.data.matched_on ?? null,
+      });
+    }
+
+    return mapPersonDataToEnrichResult(
+      match.person_data,
+      status,
+      parsed.data.matched_on ?? null,
+    );
   });
+}
+
+export function sanitizeCrustdataError(body: unknown): {
+  type: string | null;
+  reason: string | null;
+  requestId: string | null;
+} {
+  if (!body || typeof body !== "object") {
+    return { type: null, reason: null, requestId: null };
+  }
+  const record = body as Record<string, unknown>;
+  const type =
+    typeof record.type === "string"
+      ? record.type
+      : typeof record.error === "string"
+        ? record.error
+        : null;
+  const reason =
+    typeof record.reason === "string"
+      ? record.reason
+      : typeof record.description === "string"
+        ? record.description
+        : typeof record.message === "string"
+          ? record.message
+          : null;
+  const requestId =
+    typeof record.request_id === "string"
+      ? record.request_id
+      : typeof record.requestId === "string"
+        ? record.requestId
+        : null;
+  return { type, reason, requestId };
+}
+
+function summarizeRequestedFields(body: unknown): string {
+  if (!body || typeof body !== "object") {
+    return "n/a";
+  }
+  const fields = (body as { fields?: unknown }).fields;
+  return Array.isArray(fields) ? fields.map(String).join(",") : "n/a";
 }
 
 export type EnrichCompanyOptions = {
@@ -599,13 +690,7 @@ export async function enrichPerson(
   const env = getEnv();
   const body = {
     professional_network_profile_urls: profileUrls,
-    fields: [
-      "basic_profile",
-      "social_handles",
-      "experience",
-      "education",
-      "skills",
-    ],
+    fields: ["basic_profile", "social_handles", "experience"],
   };
 
   const outcome = await fetchWithRetry(

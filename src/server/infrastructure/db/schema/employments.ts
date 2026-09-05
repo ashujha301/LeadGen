@@ -60,6 +60,12 @@ export const employments = pgTable(
     uniqueIndex("employments_current_person_company_idx")
       .on(table.personId, table.companyId)
       .where(sql`${table.isCurrent} = true`),
+    uniqueIndex("employments_person_provider_employment_id_uidx")
+      .on(table.personId, table.providerEmploymentId)
+      .where(sql`${table.providerEmploymentId} is not null`),
+    uniqueIndex("employments_person_provider_fingerprint_uidx")
+      .on(table.personId, table.providerFingerprint)
+      .where(sql`${table.providerFingerprint} is not null`),
   ],
 );
 

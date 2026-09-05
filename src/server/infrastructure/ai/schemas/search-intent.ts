@@ -5,17 +5,22 @@ export const searchIntentOutputSchema = searchIntentSchema;
 
 export type SearchIntentOutput = z.infer<typeof searchIntentOutputSchema>;
 
-export const SEARCH_INTENT_SCHEMA_VERSION = "search-intent.v1";
+export const SEARCH_INTENT_SCHEMA_VERSION = "search-intent.v2";
 
 export const allowedSearchFields = [
+  "mode",
   "roles",
   "seniority",
   "scoreThreshold",
   "confidenceThreshold",
   "company",
+  "personName",
+  "currentCompany",
   "previousCompany",
   "signalType",
-  "employmentOverlap",
+  "companyA",
+  "companyB",
+  "minOverlapDays",
   "dateRange",
   "sortBy",
   "sortOrder",

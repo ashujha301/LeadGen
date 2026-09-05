@@ -17,21 +17,8 @@ export type ParseSearchQueryInput = {
 export type ParseSearchQueryResult =
   | { status: "success"; data: SearchIntent; responseId: string | null; durationMs: number }
   | { status: "disabled"; reason: string }
+  | { status: "timeout"; error: string; durationMs: number }
   | { status: "error"; error: string; durationMs: number };
-
-function fallbackParseSearchQuery(query: string): SearchIntent {
-  const normalized = query.toLowerCase();
-
-  return {
-    roles: /\b(ceo|founder|owner|president|vp sales|head of sales)\b/.test(normalized)
-      ? normalized.match(/\b(ceo|founder|owner|president|vp sales|head of sales)\b/g) ?? undefined
-      : undefined,
-    scoreThreshold: normalized.includes("high score") ? 70 : undefined,
-    confidenceThreshold: normalized.includes("high confidence") ? 0.8 : undefined,
-    sortBy: "score",
-    sortOrder: "desc",
-  };
-}
 
 export async function parseSearchQuery(
   input: ParseSearchQueryInput,
@@ -51,24 +38,16 @@ export async function parseSearchQuery(
   });
 
   if (result.status === "disabled") {
-    return {
-      status: "success",
-      data: fallbackParseSearchQuery(input.query),
-      responseId: null,
-      durationMs: 0,
-    };
+    return { status: "disabled", reason: result.reason };
+  }
+
+  if (result.status === "timeout") {
+    return { status: "timeout", error: result.error, durationMs: result.durationMs };
   }
 
   if (result.status === "error") {
-    return {
-      status: "success",
-      data: fallbackParseSearchQuery(input.query),
-      responseId: null,
-      durationMs: result.durationMs,
-    };
+    return { status: "error", error: result.error, durationMs: result.durationMs };
   }
 
   return result;
 }
-
-export { fallbackParseSearchQuery };

@@ -11,7 +11,6 @@ export { extractPage, type ExtractPageInput, type ExtractPageResult } from "./ex
 
 export {
   parseSearchQuery,
-  fallbackParseSearchQuery,
   type ParseSearchQueryInput,
   type ParseSearchQueryResult,
 } from "./parse-search-query";

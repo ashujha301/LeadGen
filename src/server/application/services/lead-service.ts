@@ -1,6 +1,7 @@
 import type { LeadDetail, LeadSummary, RoleCriteria, ScoreComponent } from "@/shared/contracts";
 import { ageInDays, calculateFreshness } from "@/server/domain";
 import { buildLeadSummary as mapLeadSummary } from "@/server/application/mappers/lead-summary";
+import { deriveTimelineStatus } from "@/server/application/services/persist-person-enrichment";
 import { getDb, entitiesRepo, leadsRepo, runsRepo, sourcesRepo } from "@/server/infrastructure/db";
 import { buildLeadGraph } from "@/server/domain";
 import type { LeadsScope } from "@/server/infrastructure/db";
@@ -114,8 +115,14 @@ export const leadService = {
     }
 
     const employments = await entitiesRepo.getEmploymentsByPersonId(db, lead.personId);
+    const sortedEmployments = [...employments].sort((left, right) => {
+      if (left.isCurrent !== right.isCurrent) {
+        return left.isCurrent ? -1 : 1;
+      }
+      return (right.startDate ?? "").localeCompare(left.startDate ?? "");
+    });
     const companies = await Promise.all(
-      employments.map(async (employment) => {
+      sortedEmployments.map(async (employment) => {
         const company = employment.companyId
           ? await entitiesRepo.getCompanyById(db, employment.companyId)
           : null;
@@ -155,6 +162,12 @@ export const leadService = {
       label: component.label ?? component.componentKey,
     }));
 
+    const [experienceMetrics] = await db
+      .select()
+      .from(personExperienceMetrics)
+      .where(eq(personExperienceMetrics.personId, lead.personId))
+      .limit(1);
+
     return {
       ...summary,
       explanation: lead.explanation ?? "Lead scored from collected evidence.",
@@ -168,6 +181,19 @@ export const leadService = {
       })),
       conflicts: [],
       employmentHistory: companies,
+      timelineStatus: deriveTimelineStatus({
+        enrichmentStatus: lead.enrichmentStatus,
+        employmentCount: companies.length,
+      }),
+      calculatedExperienceMonths: experienceMetrics?.calculatedTotalMonths ?? null,
+      providerExperienceYears: experienceMetrics?.providerExperienceYears
+        ? Number(experienceMetrics.providerExperienceYears)
+        : null,
+      totalExperienceYears: experienceMetrics?.calculatedTotalMonths
+        ? experienceMetrics.calculatedTotalMonths / 12
+        : experienceMetrics?.providerExperienceYears
+          ? Number(experienceMetrics.providerExperienceYears)
+          : summary.totalExperienceYears,
     };
   },
 

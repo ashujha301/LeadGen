@@ -2,6 +2,7 @@ import { Briefcase } from "lucide-react";
 import Link from "next/link";
 import { formatPercent } from "@/shared/utils/formatters";
 import { Badge } from "@/components/ui/badge";
+import type { TimelineStatus } from "@/shared/contracts";
 
 type Employment = {
   companyId: string | null;
@@ -16,6 +17,9 @@ type Employment = {
 
 type EmploymentTimelineProps = {
   employments: Employment[];
+  timelineStatus?: TimelineStatus;
+  calculatedExperienceMonths?: number | null;
+  providerExperienceYears?: number | null;
 };
 
 function formatDateRange(start: string | null, end: string | null, isCurrent: boolean): string {
@@ -24,7 +28,27 @@ function formatDateRange(start: string | null, end: string | null, isCurrent: bo
   return `${startLabel} – ${endLabel}`;
 }
 
-export function EmploymentTimeline({ employments }: EmploymentTimelineProps) {
+function statusMessage(status: TimelineStatus): string {
+  switch (status) {
+    case "not_found":
+      return "Provider did not find a matching profile for enrichment.";
+    case "redacted":
+      return "Provider redacted this profile; employment history is unavailable.";
+    case "failed":
+      return "Enrichment failed; employment history could not be refreshed.";
+    case "no_history":
+      return "Enrichment completed, but no employment history was returned.";
+    default:
+      return "No employment history recorded.";
+  }
+}
+
+export function EmploymentTimeline({
+  employments,
+  timelineStatus,
+  calculatedExperienceMonths,
+  providerExperienceYears,
+}: EmploymentTimelineProps) {
   const sorted = [...employments].sort((a, b) => {
     if (a.isCurrent && !b.isCurrent) return -1;
     if (!a.isCurrent && b.isCurrent) return 1;
@@ -33,10 +57,12 @@ export function EmploymentTimeline({ employments }: EmploymentTimelineProps) {
     return bDate - aDate;
   });
 
+  const status = timelineStatus ?? (sorted.length > 0 ? "available" : "no_history");
+
   if (sorted.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-[var(--border)] p-6 text-center text-sm text-muted">
-        No employment history recorded.
+        {statusMessage(status)}
       </div>
     );
   }
@@ -47,9 +73,20 @@ export function EmploymentTimeline({ employments }: EmploymentTimelineProps) {
         <Briefcase className="h-4 w-4 text-accent" />
         Employment timeline
       </h3>
+      {(calculatedExperienceMonths != null || providerExperienceYears != null) && (
+        <p className="text-xs text-muted">
+          {calculatedExperienceMonths != null
+            ? `Calculated experience: ${(calculatedExperienceMonths / 12).toFixed(1)} years`
+            : null}
+          {calculatedExperienceMonths != null && providerExperienceYears != null ? " · " : null}
+          {providerExperienceYears != null
+            ? `Provider-reported: ${providerExperienceYears} years`
+            : null}
+        </p>
+      )}
       <ol className="relative ml-3 border-l border-[var(--border)] pl-6">
         {sorted.map((employment) => (
-          <li key={`${employment.companyId ?? employment.companyName}-${employment.startDate}`} className="mb-4 last:mb-0">
+          <li key={`${employment.companyId ?? employment.companyName}-${employment.startDate}-${employment.title}`} className="mb-4 last:mb-0">
             <span
               className={`absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-background ${
                 employment.isCurrent ? "bg-accent" : "bg-muted"
@@ -72,6 +109,7 @@ export function EmploymentTimeline({ employments }: EmploymentTimelineProps) {
             {employment.title && <p className="text-sm text-muted">{employment.title}</p>}
             <p className="text-xs text-muted">
               {formatDateRange(employment.startDate, employment.endDate, employment.isCurrent)}
+              {employment.employerDomain ? ` · ${employment.employerDomain}` : ""}
             </p>
           </li>
         ))}

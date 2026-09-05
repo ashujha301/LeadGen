@@ -20,6 +20,7 @@ export type StructuredAiRequest<TSchema extends z.ZodTypeAny> = {
 export type StructuredAiResult<T> =
   | { status: "success"; data: T; responseId: string | null; durationMs: number }
   | { status: "disabled"; reason: string }
+  | { status: "timeout"; error: string; durationMs: number }
   | { status: "error"; error: string; durationMs: number };
 
 let cachedClient: OpenAI | null = null;
@@ -144,7 +145,8 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
   } catch (error) {
     const durationMs = Date.now() - startedAt;
     const message = error instanceof Error ? error.message : "Unknown OpenAI error";
-    const status = error instanceof Error && error.name === "AbortError" ? "timeout" : "error";
+    const timedOut = error instanceof Error && error.name === "AbortError";
+    const status = timedOut ? "timeout" : "error";
 
     if (request.db && aiCallId) {
       await aiCallsRepo.updateAiCallStatus(request.db, aiCallId, {
@@ -152,6 +154,14 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
         durationMs,
         errorMessage: message,
       });
+    }
+
+    if (timedOut) {
+      return {
+        status: "timeout",
+        error: message,
+        durationMs,
+      };
     }
 
     return {

@@ -41,7 +41,14 @@ export async function extractPage(input: ExtractPageInput): Promise<ExtractPageR
   });
 
   if (result.status !== "success") {
-    return result;
+    if (result.status === "disabled") {
+      return result;
+    }
+    return {
+      status: "error",
+      error: result.error,
+      durationMs: result.durationMs,
+    };
   }
 
   return {

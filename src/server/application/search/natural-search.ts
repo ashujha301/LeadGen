@@ -3,9 +3,13 @@ import type { NaturalSearchRequest, NaturalSearchResponse, SearchIntent } from "
 import type { Db } from "@/server/infrastructure/db";
 
 import {
+  buildSearchIntentSummary,
+  executeConnectionsSearch,
   executeStructuredSearch,
+  executeTimelineSearch,
+  intentHasMeaningfulConstraint,
+  NaturalSearchError,
   sanitizeSearchIntent,
-  type StructuredSearchResult,
 } from "./structured-search";
 
 export type NaturalSearchOptions = {
@@ -23,30 +27,67 @@ export async function runNaturalSearch(
     db: options.db,
   });
 
-  const intent = sanitizeSearchIntent(parsed.status === "success" ? parsed.data : {});
-  const results = await executeStructuredSearch(options.db, intent, {
+  if (parsed.status === "disabled") {
+    throw new NaturalSearchError(
+      "AI_UNAVAILABLE",
+      "Natural-language search requires OpenAI to be configured",
+      { reason: parsed.reason },
+    );
+  }
+
+  if (parsed.status === "timeout") {
+    throw new NaturalSearchError("UPSTREAM_TIMEOUT", "OpenAI timed out while parsing the query");
+  }
+
+  if (parsed.status === "error") {
+    throw new NaturalSearchError(
+      "SEARCH_NOT_UNDERSTOOD",
+      "Could not understand the search query",
+      { error: parsed.error },
+    );
+  }
+
+  let intent: SearchIntent;
+  try {
+    intent = sanitizeSearchIntent(parsed.data);
+  } catch {
+    throw new NaturalSearchError("SEARCH_NOT_UNDERSTOOD", "Parsed search intent was invalid");
+  }
+
+  if (!intentHasMeaningfulConstraint(intent)) {
+    throw new NaturalSearchError(
+      "SEARCH_NOT_UNDERSTOOD",
+      "Search intent contained no meaningful filters",
+    );
+  }
+
+  const summary = buildSearchIntentSummary(intent);
+  const interpretation = {
+    intent,
+    parser: "openai" as const,
+    summary,
+  };
+
+  if (intent.mode === "timeline") {
+    const items = await executeTimelineSearch(options.db, intent, {
+      runId: input.runId,
+      limit: options.limit ?? 20,
+    });
+    return { interpretation, result: { kind: "timelines", items } };
+  }
+
+  if (intent.mode === "connections") {
+    const items = await executeConnectionsSearch(options.db, intent, {
+      runId: input.runId,
+    });
+    return { interpretation, result: { kind: "connections", items } };
+  }
+
+  const items = await executeStructuredSearch(options.db, intent, {
     runId: input.runId,
     limit: options.limit ?? 50,
   });
-
-  return {
-    intent,
-    results,
-  };
+  return { interpretation, result: { kind: "leads", items } };
 }
 
-export async function parseAndSearch(
-  query: string,
-  db: Db,
-  runId?: string,
-): Promise<{ intent: SearchIntent; results: StructuredSearchResult[] }> {
-  const parsed = await parseSearchQuery({ query, runId, db });
-  const intent = sanitizeSearchIntent(parsed.status === "success" ? parsed.data : {});
-
-  const results = await executeStructuredSearch(db, intent, {
-    runId,
-    limit: 50,
-  });
-
-  return { intent, results };
-}
+export { NaturalSearchError };

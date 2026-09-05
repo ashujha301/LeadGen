@@ -8,6 +8,10 @@ export const errorCodeSchema = z.enum([
   "CONFLICT",
   "INTERNAL_ERROR",
   "SERVICE_UNAVAILABLE",
+  "AI_UNAVAILABLE",
+  "SEARCH_NOT_UNDERSTOOD",
+  "UPSTREAM_TIMEOUT",
+  "AMBIGUOUS_PERSON",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCodeSchema>;

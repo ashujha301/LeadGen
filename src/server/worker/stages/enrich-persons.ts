@@ -7,11 +7,10 @@ import {
   connectorAttemptsRepo,
   entitiesRepo,
   getDb,
-  personExperienceMetrics,
   runsRepo,
   sourcesRepo,
 } from "@/server/infrastructure/db";
-import { eq } from "drizzle-orm";
+import { persistPersonEnrichment } from "@/server/application/services/persist-person-enrichment";
 
 import type { StageContext, StageResult } from "../jobs/process-run";
 import { assertRunNotCanceled, getRunAbortSignal } from "../run-abort";
@@ -53,6 +52,7 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
   let personsEnriched = 0;
   const enrichedPersonIds: string[] = [];
   const startedAt = Date.now();
+  const fetchedAt = new Date();
   const result = await enrichPerson(profileUrls, {
     timeoutMs: env.CRUSTDATA_PEOPLE_TIMEOUT_MS,
     signal: getRunAbortSignal(ctx.runId),
@@ -73,27 +73,31 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
     return { stage: "enriching", success: true, metrics: { personsEnriched: 0 } };
   }
 
-  for (const personResult of result.data) {
-    if (!personResult.linkedinUrl || personResult.status !== "matched") {
+  for (let index = 0; index < result.data.length; index += 1) {
+    const personResult = result.data[index]!;
+    const inputUrl = profileUrls[index] ?? null;
+    const identityUrl = personResult.linkedinUrl ?? personResult.matchedOn ?? inputUrl;
+    if (!identityUrl) {
       continue;
     }
 
-    const resultProfileKey = profileIdentityKey(personResult.linkedinUrl);
+    const resultProfileKey = profileIdentityKey(identityUrl);
     const personId = resultProfileKey ? personByProfileKey.get(resultProfileKey) : undefined;
     if (!personId) {
       continue;
     }
 
-    const normalizedProfile = normalizeUrl(personResult.linkedinUrl)?.toLowerCase() ?? personResult.linkedinUrl.toLowerCase();
+    const normalizedProfile =
+      normalizeUrl(identityUrl)?.toLowerCase() ?? identityUrl.toLowerCase();
     const sourceKey = buildPersonEnrichSourceKey(normalizedProfile);
     const upsert = await sourcesRepo.upsertSourceDocument(db, {
       runId: ctx.runId,
       sourceType: "crustdata",
       sourceUrl: "https://api.crustdata.com/person/enrich",
-      canonicalUrl: personResult.linkedinUrl,
+      canonicalUrl: identityUrl,
       sourceKey,
       responseStatus: 200,
-      fetchedAt: new Date(),
+      fetchedAt,
       extractionStatus: "completed",
     });
 
@@ -101,49 +105,19 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
       await sourcesRepo.updateExtractionStatus(db, upsert.document.id, "completed");
     }
 
-    if (personResult.crustdataPersonId) {
-      await entitiesRepo.upsertPersonExternalProfile(db, {
-        personId,
-        provider: "crustdata",
-        providerPersonId: personResult.crustdataPersonId,
-        profileUrl: personResult.linkedinUrl,
-        normalizedProfileUrl: normalizedProfile,
-        providerUpdatedAt: personResult.providerUpdatedAt
-          ? new Date(personResult.providerUpdatedAt)
-          : null,
-      });
+    await persistPersonEnrichment({
+      db,
+      personId,
+      enrichResult: personResult,
+      runId: ctx.runId,
+      fetchedAt,
+      inputProfileUrl: inputUrl,
+    });
+
+    if (personResult.status === "matched") {
+      personsEnriched += 1;
+      enrichedPersonIds.push(personId);
     }
-
-    const totalMonths = personResult.providerExperienceYears
-      ? Math.round(personResult.providerExperienceYears * 12)
-      : null;
-
-    const [existingMetrics] = await db
-      .select()
-      .from(personExperienceMetrics)
-      .where(eq(personExperienceMetrics.personId, personId))
-      .limit(1);
-
-    const metricsInput = {
-      providerExperienceYears: personResult.providerExperienceYears?.toString() ?? null,
-      calculatedTotalMonths: totalMonths,
-      experienceConfidence: "0.85",
-    };
-
-    if (existingMetrics) {
-      await db
-        .update(personExperienceMetrics)
-        .set(metricsInput)
-        .where(eq(personExperienceMetrics.personId, personId));
-    } else {
-      await db.insert(personExperienceMetrics).values({
-        personId,
-        ...metricsInput,
-      });
-    }
-
-    personsEnriched += 1;
-    enrichedPersonIds.push(personId);
   }
 
   ctx.enrichedPersonIds = enrichedPersonIds;

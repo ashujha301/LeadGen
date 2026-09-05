@@ -11,7 +11,14 @@ export * as connectorAttemptsRepo from "./repositories/connector-attempts";
 export * as requestLimitsRepo from "./repositories/request-limits";
 export * as runEventsRepo from "./repositories/run-events";
 export * as highValueLeadsRepo from "./repositories/high-value-leads";
+export * as ownershipRepo from "./repositories/ownership";
 export { startOfUtcDay } from "./repositories/request-limits";
+export {
+  userOwnsPerson,
+  userOwnsCompany,
+  listOwnedPersonIdsForCompany,
+  listOwnedCompanyIdsForPerson,
+} from "./repositories/ownership";
 export { withAdvisoryLock, buildPersonLockKey } from "./advisory-lock";
 
 export type { CreateRunInput } from "./repositories/runs";

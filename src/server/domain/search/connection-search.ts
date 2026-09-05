@@ -8,6 +8,8 @@ export type OverlapSearchInput = {
   companyId: string;
   personId?: string;
   minOverlapDays?: number;
+  /** When set, only these people participate in overlap results (user-scoped). */
+  ownedPersonIds?: string[];
 };
 
 type EmploymentRow = {
@@ -17,6 +19,17 @@ type EmploymentRow = {
   startDate: string | null;
   endDate: string | null;
 };
+
+export function filterRowsToOwnedPersonIds<T extends { personId: string }>(
+  rows: T[],
+  ownedPersonIds: string[] | undefined,
+): T[] {
+  if (ownedPersonIds === undefined) {
+    return rows;
+  }
+  const allowed = new Set(ownedPersonIds);
+  return rows.filter((row) => allowed.has(row.personId));
+}
 
 function toDate(value: string | null): Date | null {
   return value ? new Date(value) : null;
@@ -52,9 +65,11 @@ export async function findEmploymentOverlaps(
     .innerJoin(people, eq(people.id, employments.personId))
     .where(eq(employments.companyId, input.companyId));
 
+  const scopedRows = filterRowsToOwnedPersonIds(employmentRows, input.ownedPersonIds);
+
   const filteredRows = input.personId
-    ? employmentRows.filter((row) => row.personId === input.personId)
-    : employmentRows;
+    ? scopedRows.filter((row) => row.personId === input.personId)
+    : scopedRows;
 
   const grouped = new Map<string, EmploymentRow[]>();
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, User } from "lucide-react";
 import { entityService } from "@/server/application/services/entity-service";
+import { requireSession } from "@/features/auth/session-guard";
 import { formatPercent, formatRelativeTime } from "@/shared/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +16,9 @@ export default async function PersonDetailPage({
 }: {
   params: Promise<{ personId: string }>;
 }) {
+  const user = await requireSession();
   const { personId } = await params;
-  const person = await entityService.getPerson(personId);
+  const person = await entityService.getPerson(personId, user.id);
 
   if (!person) {
     notFound();

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { entityService } from "@/server/application/services/entity-service";
+import { requireSession } from "@/features/auth/session-guard";
 import { formatPercent } from "@/shared/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/features/shell/empty-state";
@@ -9,7 +10,8 @@ import { Alert } from "@/components/ui/alert";
 export const dynamic = "force-dynamic";
 
 export default async function ReviewPage() {
-  const matches = await entityService.getUnresolvedMatches();
+  const user = await requireSession();
+  const matches = await entityService.getUnresolvedMatches(user.id);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

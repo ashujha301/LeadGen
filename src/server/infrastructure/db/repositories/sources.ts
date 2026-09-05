@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "../client";
 import {
   observations,
+  searchRuns,
   sourceDocuments,
   type NewObservation,
   type NewSourceDocument,
@@ -151,6 +152,28 @@ export async function findSourceDocumentsByDomain(
     where: eq(sourceDocuments.sourceKey, `company_enrich:${normalizedDomain}`),
     limit,
   });
+}
+
+/** Source documents for a domain that came from the authenticated user's runs only. */
+export async function findSourceDocumentsByDomainForUser(
+  db: Db,
+  normalizedDomain: string,
+  userId: string,
+  limit = 5,
+): Promise<SourceDocument[]> {
+  const rows = await db
+    .select({ document: sourceDocuments })
+    .from(sourceDocuments)
+    .innerJoin(searchRuns, eq(sourceDocuments.runId, searchRuns.id))
+    .where(
+      and(
+        eq(sourceDocuments.sourceKey, `company_enrich:${normalizedDomain}`),
+        eq(searchRuns.userId, userId),
+      ),
+    )
+    .limit(limit);
+
+  return rows.map((row) => row.document);
 }
 
 export async function updateObservationNormalizedValue(

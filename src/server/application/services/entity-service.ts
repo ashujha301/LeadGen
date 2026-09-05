@@ -1,5 +1,13 @@
 import type { CompanyDetail, PersonDetail } from "@/shared/contracts";
-import { getDb, entitiesRepo, sourcesRepo } from "@/server/infrastructure/db";
+import {
+  getDb,
+  entitiesRepo,
+  listOwnedCompanyIdsForPerson,
+  listOwnedPersonIdsForCompany,
+  sourcesRepo,
+  userOwnsCompany,
+  userOwnsPerson,
+} from "@/server/infrastructure/db";
 
 function toNumber(value: string | number | null | undefined): number {
   if (value == null) {
@@ -20,29 +28,38 @@ export type EntityMatch = {
 };
 
 export const entityService = {
-  async getCompany(companyId: string): Promise<CompanyDetail | null> {
+  async getCompany(companyId: string, userId: string): Promise<CompanyDetail | null> {
     const db = getDb();
+    if (!(await userOwnsCompany(db, companyId, userId))) {
+      return null;
+    }
+
     const company = await entitiesRepo.getCompanyById(db, companyId);
     if (!company) {
       return null;
     }
 
+    const ownedPersonIds = new Set(
+      await listOwnedPersonIdsForCompany(db, companyId, userId),
+    );
     const employments = await entitiesRepo.getEmploymentsByCompanyId(db, companyId);
     const people = (
       await Promise.all(
-        employments.map(async (employment) => {
-          const person = await entitiesRepo.getPersonById(db, employment.personId);
-          if (!person) {
-            return null;
-          }
+        employments
+          .filter((employment) => ownedPersonIds.has(employment.personId))
+          .map(async (employment) => {
+            const person = await entitiesRepo.getPersonById(db, employment.personId);
+            if (!person) {
+              return null;
+            }
 
-          return {
-            id: person.id,
-            name: person.name,
-            title: employment.rawTitle,
-            isCurrent: employment.isCurrent,
-          };
-        }),
+            return {
+              id: person.id,
+              name: person.name,
+              title: employment.rawTitle,
+              isCurrent: employment.isCurrent,
+            };
+          }),
       )
     ).filter(Boolean) as Array<{
       id: string;
@@ -53,7 +70,11 @@ export const entityService = {
 
     const signals = await entitiesRepo.getBusinessSignalsByCompanyId(db, companyId);
     const aliases = await entitiesRepo.getCompanyAliasesByCompanyId(db, companyId);
-    const documents = await sourcesRepo.findSourceDocumentsByDomain(db, company.normalizedDomain);
+    const documents = await sourcesRepo.findSourceDocumentsByDomainForUser(
+      db,
+      company.normalizedDomain,
+      userId,
+    );
 
     return {
       id: company.id,
@@ -83,17 +104,28 @@ export const entityService = {
     };
   },
 
-  async getPerson(personId: string): Promise<PersonDetail | null> {
+  async getPerson(personId: string, userId: string): Promise<PersonDetail | null> {
     const db = getDb();
+    if (!(await userOwnsPerson(db, personId, userId))) {
+      return null;
+    }
+
     const person = await entitiesRepo.getPersonById(db, personId);
     if (!person) {
       return null;
     }
 
+    const ownedCompanyIds = new Set(
+      await listOwnedCompanyIdsForPerson(db, personId, userId),
+    );
     const contacts = await entitiesRepo.getContactPointsByPersonId(db, personId);
     const employments = await entitiesRepo.getEmploymentsByPersonId(db, personId);
+    const scopedEmployments = employments.filter(
+      (employment) =>
+        employment.companyId != null && ownedCompanyIds.has(employment.companyId),
+    );
     const employmentDetails = await Promise.all(
-      employments.map(async (employment) => {
+      scopedEmployments.map(async (employment) => {
         const company = employment.companyId
           ? await entitiesRepo.getCompanyById(db, employment.companyId)
           : null;
@@ -130,13 +162,21 @@ export const entityService = {
     };
   },
 
-  async getUnresolvedMatches(): Promise<EntityMatch[]> {
+  async getUnresolvedMatches(userId: string): Promise<EntityMatch[]> {
     const db = getDb();
     const matches = await entitiesRepo.getEntityMatchesForReview(db);
     const results: EntityMatch[] = [];
 
     for (const match of matches) {
       if (match.entityType !== "person") {
+        continue;
+      }
+
+      const [ownsA, ownsB] = await Promise.all([
+        userOwnsPerson(db, match.candidateAId, userId),
+        userOwnsPerson(db, match.candidateBId, userId),
+      ]);
+      if (!ownsA || !ownsB) {
         continue;
       }
 

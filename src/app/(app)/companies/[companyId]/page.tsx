@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { entityService } from "@/server/application/services/entity-service";
+import { requireSession } from "@/features/auth/session-guard";
 import { formatPercent, formatRelativeTime } from "@/shared/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +15,9 @@ export default async function CompanyDetailPage({
 }: {
   params: Promise<{ companyId: string }>;
 }) {
+  const user = await requireSession();
   const { companyId } = await params;
-  const company = await entityService.getCompany(companyId);
+  const company = await entityService.getCompany(companyId, user.id);
 
   if (!company) {
     notFound();

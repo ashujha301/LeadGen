@@ -58,7 +58,7 @@ describe("HVL neighbor navigation", () => {
 describe("HVL navigation route contracts", () => {
   it("HVL nested lead page must not link to /people/", () => {
     const src = readFileSync(
-      join(root, "src/app/high-value-leads/[companyId]/leads/[leadId]/page.tsx"),
+      join(root, "src/app/(app)/high-value-leads/[companyId]/leads/[leadId]/page.tsx"),
       "utf8",
     );
     expect(src).not.toMatch(/\/people\//);

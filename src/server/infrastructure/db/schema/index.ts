@@ -1,5 +1,6 @@
 export * from "./enums";
 export * from "./helpers";
+export * from "./auth-users";
 export * from "./search-runs";
 export * from "./source-documents";
 export * from "./observations";

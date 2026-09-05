@@ -25,7 +25,7 @@ describe("natural search reliability", () => {
     });
 
     await expect(
-      runNaturalSearch({ query: "founders at appknox" }, { db: {} as never }),
+      runNaturalSearch({ query: "founders at appknox" }, { db: {} as never, userId: "user-1" }),
     ).rejects.toMatchObject({ code: "AI_UNAVAILABLE" satisfies NaturalSearchError["code"] });
   });
 
@@ -37,7 +37,7 @@ describe("natural search reliability", () => {
     });
 
     await expect(
-      runNaturalSearch({ query: "founders at appknox" }, { db: {} as never }),
+      runNaturalSearch({ query: "founders at appknox" }, { db: {} as never, userId: "user-1" }),
     ).rejects.toMatchObject({ code: "UPSTREAM_TIMEOUT" });
   });
 
@@ -48,9 +48,9 @@ describe("natural search reliability", () => {
       durationMs: 5,
     });
 
-    await expect(runNaturalSearch({ query: "asdf" }, { db: {} as never })).rejects.toMatchObject({
-      code: "SEARCH_NOT_UNDERSTOOD",
-    });
+    await expect(
+      runNaturalSearch({ query: "asdf" }, { db: {} as never, userId: "user-1" }),
+    ).rejects.toMatchObject({ code: "SEARCH_NOT_UNDERSTOOD" });
   });
 
   it("rejects empty intent without executing search", async () => {
@@ -61,9 +61,9 @@ describe("natural search reliability", () => {
       durationMs: 1,
     });
 
-    await expect(runNaturalSearch({ query: "hello" }, { db: {} as never })).rejects.toMatchObject({
-      code: "SEARCH_NOT_UNDERSTOOD",
-    });
+    await expect(
+      runNaturalSearch({ query: "hello" }, { db: {} as never, userId: "user-1" }),
+    ).rejects.toMatchObject({ code: "SEARCH_NOT_UNDERSTOOD" });
   });
 
   it("sanitizes leads/timeline/connections intents", () => {

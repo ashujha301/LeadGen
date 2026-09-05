@@ -13,10 +13,15 @@ import {
   leadCandidates,
   people,
   personExperienceMetrics,
+  searchRuns,
 } from "@/server/infrastructure/db";
 import { findEmploymentOverlaps } from "@/server/domain/search/connection-search";
 import { normalizeDomain } from "@/server/domain/normalization/domain";
 import { deriveTimelineStatus } from "@/server/application/services/persist-person-enrichment";
+import {
+  listOwnedPersonIdsForCompany,
+  userOwnsCompany,
+} from "@/server/infrastructure/db/repositories/ownership";
 import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 
 export type StructuredSearchResult = LeadSearchResult;
@@ -99,12 +104,22 @@ function companyLookupCondition(company: string): SQL {
  */
 export function compileSearchIntent(
   intent: LeadsSearchIntent,
-  runId?: string,
+  options: { runId?: string; userId?: string } = {},
 ): CompiledSearchQuery {
   const conditions: SQL[] = [];
 
-  if (runId) {
-    conditions.push(eq(leadCandidates.runId, runId));
+  if (options.runId) {
+    conditions.push(eq(leadCandidates.runId, options.runId));
+  }
+
+  if (options.userId) {
+    conditions.push(
+      sql`exists (
+        select 1 from search_runs
+        where search_runs.id = ${leadCandidates.runId}
+          and search_runs.user_id = ${options.userId}
+      )`,
+    );
   }
 
   if (intent.scoreThreshold !== undefined) {
@@ -173,10 +188,13 @@ export function intentHasMeaningfulConstraint(intent: SearchIntent): boolean {
 export async function executeStructuredSearch(
   db: Db,
   intent: LeadsSearchIntent,
-  options: { runId?: string; limit?: number } = {},
+  options: { runId?: string; userId?: string; limit?: number } = {},
 ): Promise<LeadSearchResult[]> {
   const limit = options.limit ?? 50;
-  const compiled = compileSearchIntent(intent, options.runId);
+  const compiled = compileSearchIntent(intent, {
+    runId: options.runId,
+    userId: options.userId,
+  });
 
   const rows = await db
     .select({
@@ -230,7 +248,7 @@ function sortEmploymentRows<T extends { isCurrent: boolean; startDate: string | 
 async function resolveCompanyIdsByQuery(
   db: Db,
   query: string,
-  options: { runId?: string } = {},
+  options: { runId?: string; userId?: string } = {},
 ): Promise<string[]> {
   const normalized = query.toLowerCase();
   const domain = normalizeDomain(query);
@@ -249,6 +267,15 @@ async function resolveCompanyIdsByQuery(
           and lc.run_id = ${options.runId}
       )`,
     );
+  } else if (options.userId) {
+    conditions.push(
+      sql`exists (
+        select 1 from lead_candidates lc
+        inner join search_runs sr on sr.id = lc.run_id
+        where lc.company_id = ${companies.id}
+          and sr.user_id = ${options.userId}
+      )`,
+    );
   }
 
   const rows = await db
@@ -262,7 +289,7 @@ async function resolveCompanyIdsByQuery(
 export async function executeTimelineSearch(
   db: Db,
   intent: TimelineSearchIntent,
-  options: { runId?: string; limit?: number } = {},
+  options: { runId?: string; userId?: string; limit?: number } = {},
 ) {
   const limit = options.limit ?? 20;
   const conditions: SQL[] = [];
@@ -277,6 +304,15 @@ export async function executeTimelineSearch(
         select 1 from lead_candidates lc
         where lc.person_id = ${people.id}
           and lc.run_id = ${options.runId}
+      )`,
+    );
+  } else if (options.userId) {
+    conditions.push(
+      sql`exists (
+        select 1 from lead_candidates lc
+        inner join search_runs sr on sr.id = lc.run_id
+        where lc.person_id = ${people.id}
+          and sr.user_id = ${options.userId}
       )`,
     );
   }
@@ -370,13 +406,13 @@ export async function executeTimelineSearch(
         enrichmentStatus: leadCandidates.enrichmentStatus,
       })
       .from(leadCandidates)
+      .innerJoin(searchRuns, eq(leadCandidates.runId, searchRuns.id))
       .where(
-        options.runId
-          ? and(
-              eq(leadCandidates.personId, person.personId),
-              eq(leadCandidates.runId, options.runId),
-            )
-          : eq(leadCandidates.personId, person.personId),
+        and(
+          eq(leadCandidates.personId, person.personId),
+          options.runId ? eq(leadCandidates.runId, options.runId) : undefined,
+          options.userId ? eq(searchRuns.userId, options.userId) : undefined,
+        ),
       )
       .limit(1);
 
@@ -406,10 +442,11 @@ export async function executeTimelineSearch(
 export async function executeConnectionsSearch(
   db: Db,
   intent: ConnectionsSearchIntent,
-  options: { runId?: string } = {},
+  options: { runId?: string; userId?: string } = {},
 ) {
   const companyIds = await resolveCompanyIdsByQuery(db, intent.companyA, {
     runId: options.runId,
+    userId: options.userId,
   });
   if (companyIds.length === 0) {
     return [];
@@ -432,10 +469,17 @@ export async function executeConnectionsSearch(
 
   const allResults = [];
   for (const companyId of companyIds) {
+    if (options.userId && !(await userOwnsCompany(db, companyId, options.userId))) {
+      continue;
+    }
+    const ownedPersonIds = options.userId
+      ? await listOwnedPersonIdsForCompany(db, companyId, options.userId)
+      : undefined;
     const overlaps = await findEmploymentOverlaps(db, {
       companyId,
       personId,
       minOverlapDays: intent.minOverlapDays ?? 30,
+      ownedPersonIds,
     });
     allResults.push(...overlaps);
   }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { highValueLeadsRepo, getDb } from "@/server/infrastructure/db";
+import { requireSession } from "@/features/auth/session-guard";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -13,15 +14,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HighValueLeadsPage() {
+  const user = await requireSession();
   const db = getDb();
-  const companies = await highValueLeadsRepo.listHighValueCompanies(db);
+  const companies = await highValueLeadsRepo.listHighValueCompanies(db, user.id);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">High Value Leads</h1>
         <p className="text-sm text-muted">
-          Companies from every search, including those with zero qualifying leads.
+          Companies from your searches that have qualifying high-value leads.
         </p>
       </div>
 

@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { APP_NAME } from "@/shared/config";
 import { GitBranch, Home, Link2, Search, ShieldCheck, Star } from "lucide-react";
+
+import { SignOutButton } from "@/features/auth/sign-out-button";
+import type { SessionUser } from "@/features/auth/session-guard";
+import { APP_NAME } from "@/shared/config";
 
 const NAV_ITEMS = [
   { href: "/", label: "Search", icon: Home },
@@ -12,7 +15,13 @@ const NAV_ITEMS = [
   { href: "/review", label: "Review", icon: ShieldCheck },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: SessionUser;
+}) {
   const pathname = usePathname();
 
   return (
@@ -41,12 +50,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+        <div className="border-t border-[var(--border)] p-2">
+          <p className="truncate px-3 pb-1 text-xs text-muted" title={user.email ?? undefined}>
+            {user.email ?? user.name ?? "Signed in"}
+          </p>
+          <SignOutButton />
+        </div>
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex h-14 items-center border-b border-[var(--border)] bg-surface px-4 md:hidden">
-          <Search className="mr-2 h-4 w-4 text-accent" />
-          <span className="text-sm font-semibold">{APP_NAME}</span>
+        <header className="flex h-14 items-center justify-between border-b border-[var(--border)] bg-surface px-4 md:hidden">
+          <div className="flex items-center">
+            <Search className="mr-2 h-4 w-4 text-accent" />
+            <span className="text-sm font-semibold">{APP_NAME}</span>
+          </div>
+          <SignOutButton />
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </div>

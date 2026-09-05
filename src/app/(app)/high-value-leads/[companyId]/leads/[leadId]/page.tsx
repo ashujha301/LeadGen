@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { leadService } from "@/server/application/services/lead-service";
 import { getDb, highValueLeadsRepo } from "@/server/infrastructure/db";
+import { requireSession } from "@/features/auth/session-guard";
 import { Button } from "@/components/ui/button";
 import { LeadDetailView } from "@/features/leads/lead-detail-view";
 import { HvlLeadNavToolbar } from "@/features/leads/hvl-lead-nav-toolbar";
@@ -14,19 +15,25 @@ type PageProps = {
 };
 
 export default async function HighValueLeadDetailPage({ params }: PageProps) {
+  const user = await requireSession();
   const { companyId, leadId } = await params;
   const db = getDb();
-  const company = await highValueLeadsRepo.getHighValueCompanyById(db, companyId);
+  const company = await highValueLeadsRepo.getHighValueCompanyById(db, companyId, user.id);
   if (!company) {
     notFound();
   }
 
-  const lead = await leadService.getLead(leadId);
+  const lead = await leadService.getLead(leadId, user.id);
   if (!lead || lead.companyId !== companyId) {
     notFound();
   }
 
-  const navigation = await highValueLeadsRepo.getHighValueLeadNavigation(db, companyId, leadId);
+  const navigation = await highValueLeadsRepo.getHighValueLeadNavigation(
+    db,
+    companyId,
+    leadId,
+    user.id,
+  );
   if (!navigation) {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
@@ -45,7 +52,7 @@ export default async function HighValueLeadDetailPage({ params }: PageProps) {
     );
   }
 
-  const graph = await leadService.getLeadGraph(leadId);
+  const graph = await leadService.getLeadGraph(leadId, user.id);
 
   return (
     <LeadDetailView

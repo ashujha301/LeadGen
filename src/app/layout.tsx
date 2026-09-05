@@ -1,7 +1,6 @@
 import "@fontsource-variable/montserrat";
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppShell } from "@/features/shell/app-shell";
 
 export const metadata: Metadata = {
   title: "leadGen-demo",
@@ -17,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           fontFamily: "var(--font-montserrat, 'Montserrat Variable', system-ui, sans-serif)",
         }}
       >
-        <AppShell>{children}</AppShell>
+        {children}
       </body>
     </html>
   );

@@ -15,6 +15,7 @@ import {
 export type NaturalSearchOptions = {
   db: Db;
   limit?: number;
+  userId: string;
 };
 
 export async function runNaturalSearch(
@@ -66,23 +67,28 @@ export async function runNaturalSearch(
     summary,
   };
 
+  const searchOptions = {
+    runId: input.runId,
+    userId: options.userId,
+    limit: options.limit ?? 20,
+  };
+
   if (intent.mode === "timeline") {
-    const items = await executeTimelineSearch(options.db, intent, {
-      runId: input.runId,
-      limit: options.limit ?? 20,
-    });
+    const items = await executeTimelineSearch(options.db, intent, searchOptions);
     return { interpretation, result: { kind: "timelines", items } };
   }
 
   if (intent.mode === "connections") {
     const items = await executeConnectionsSearch(options.db, intent, {
       runId: input.runId,
+      userId: options.userId,
     });
     return { interpretation, result: { kind: "connections", items } };
   }
 
   const items = await executeStructuredSearch(options.db, intent, {
     runId: input.runId,
+    userId: options.userId,
     limit: options.limit ?? 50,
   });
   return { interpretation, result: { kind: "leads", items } };

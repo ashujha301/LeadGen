@@ -125,18 +125,39 @@ describe("GCP Docker Hub deployment contract", () => {
     expect(deploy).toMatch(/vars\.DEPLOY_ENABLED\s*==\s*'true'|DEPLOY_ENABLED.*true/);
   });
 
-  it("matches the six existing Secret Manager secret IDs", () => {
+  it("matches Secret Manager secret IDs for the 6-slot OAuth layout", () => {
     const loadSecrets = read("infra/scripts/load-secrets.sh");
     for (const secretId of [
       "leadgen-demo-database-url",
       "leadgen-demo-openai-api-key",
       "leadgen-demo-crustdata-api-key",
       "leadgen-demo-email-verifier-api-key",
-      "leadgen-demo-ip-hash-salt",
       "leadgen-demo-dockerhub-pull-token",
+      "leadgen-demo-google-client-id",
+      "leadgen-demo-google-client-secret",
     ]) {
       expect(loadSecrets).toContain(secretId);
     }
+    expect(loadSecrets).not.toContain("leadgen-demo-auth-secret");
+    expect(loadSecrets).not.toContain("leadgen-demo-ip-hash-salt");
+  });
+
+  it("loads AUTH_SECRET and IP_HASH_SALT from config.env, not Secret Manager", () => {
+    const loadSecrets = read("infra/scripts/load-secrets.sh");
+    const configExample = read("infra/config/config.env.example");
+    const forbiddenBlock = loadSecrets.match(
+      /FORBIDDEN_CONFIG_KEYS=\([\s\S]*?\)/,
+    )?.[0];
+
+    expect(forbiddenBlock).toBeTruthy();
+    expect(forbiddenBlock).not.toContain("IP_HASH_SALT");
+    expect(forbiddenBlock).not.toContain("AUTH_SECRET");
+    expect(forbiddenBlock).toContain("GOOGLE_CLIENT_ID");
+    expect(forbiddenBlock).toContain("GOOGLE_CLIENT_SECRET");
+
+    expect(loadSecrets).toMatch(/must set AUTH_SECRET and IP_HASH_SALT/);
+    expect(configExample).toMatch(/AUTH_SECRET=/);
+    expect(configExample).toMatch(/IP_HASH_SALT=/);
   });
 
   it("creates a blank Ubuntu VM without startup bootstrap", () => {

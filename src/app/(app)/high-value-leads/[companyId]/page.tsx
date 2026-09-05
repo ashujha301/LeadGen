@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { highValueLeadsRepo, getDb, entitiesRepo } from "@/server/infrastructure/db";
+import { requireSession } from "@/features/auth/session-guard";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -20,15 +21,19 @@ type PageProps = {
 };
 
 export default async function HighValueCompanyPage({ params }: PageProps) {
+  const user = await requireSession();
   const { companyId } = await params;
   const db = getDb();
-  const company = await highValueLeadsRepo.getHighValueCompanyById(db, companyId);
+  const company = await highValueLeadsRepo.getHighValueCompanyById(db, companyId, user.id);
 
   if (!company) {
     notFound();
   }
 
-  const page = await highValueLeadsRepo.getHighValueLeadsByCompanyId(db, companyId, { limit: 50 });
+  const page = await highValueLeadsRepo.getHighValueLeadsByCompanyId(db, companyId, {
+    limit: 50,
+    userId: user.id,
+  });
   const leadRows = await Promise.all(
     page.leads.map(async (lead) => {
       const employments = await entitiesRepo.getEmploymentsByPersonId(db, lead.personId);

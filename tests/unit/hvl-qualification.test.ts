@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { qualifiesAsHighValueLead } from "@/server/domain/roles/tier-matching";
+import { passesHighValueScoreGates } from "@/server/domain/leads/hvl-score-gates";
 import { HIGH_VALUE_LEAD_THRESHOLDS } from "@/shared/config";
 
 describe("qualifiesAsHighValueLead (score gate without role)", () => {
@@ -33,5 +34,16 @@ describe("qualifiesAsHighValueLead (score gate without role)", () => {
     expect(qualifiesAsHighValueLead({ ...base, scoreVersion: 1, finalScore: 90, confidence: 0.9 })).toBe(
       false,
     );
+  });
+
+  it("score gates ignore role fields", () => {
+    expect(
+      passesHighValueScoreGates({
+        scoreVersion: 2,
+        finalScore: 39,
+        confidence: 0.99,
+        isStale: false,
+      }),
+    ).toBe(true);
   });
 });

@@ -18,7 +18,10 @@ import {
   entitiesRepo,
   leadCandidates,
   personExperienceMetrics,
+  type Employment,
+  type NewEmployment,
 } from "@/server/infrastructure/db";
+import { isUniqueViolation } from "@/server/infrastructure/db/errors";
 import * as searchProvenanceRepo from "@/server/infrastructure/db/repositories/search-provenance";
 
 export type TimelineStatus = "available" | "no_history" | "not_found" | "redacted" | "failed";
@@ -179,6 +182,35 @@ function timelineStatusForEnrich(
   return employmentCount > 0 ? "available" : "no_history";
 }
 
+async function recoverCurrentEmploymentConflict(
+  db: Db,
+  input: {
+    personId: string;
+    companyId: string;
+    payload: Partial<NewEmployment>;
+  },
+): Promise<Employment> {
+  const canonical = await entitiesRepo.findCurrentEmployment(db, input.personId, input.companyId);
+  if (!canonical) {
+    throw new Error("Current employment conflict could not be resolved");
+  }
+
+  const updated = await entitiesRepo.updateEmployment(db, canonical.id, {
+    ...input.payload,
+    firstObservedAt: canonical.firstObservedAt ?? input.payload.firstObservedAt,
+    providerEmploymentId: canonical.providerEmploymentId,
+    providerFingerprint: canonical.providerFingerprint,
+  });
+  if (!updated) {
+    throw new Error("Failed to update canonical current employment");
+  }
+
+  console.warn(
+    `[timeline] recovered current employment conflict personId=${input.personId} companyId=${input.companyId}`,
+  );
+  return updated;
+}
+
 export async function persistPersonEnrichment(
   input: PersistPersonEnrichmentInput,
 ): Promise<PersistPersonEnrichmentResult> {
@@ -299,19 +331,58 @@ export async function persistPersonEnrichment(
 
     let employmentId: string;
     if (existing) {
-      await entitiesRepo.updateEmployment(db, existing.id, {
-        ...payload,
-        firstObservedAt: existing.firstObservedAt ?? fetchedAt,
-      });
-      employmentId = existing.id;
+      try {
+        await entitiesRepo.updateEmployment(db, existing.id, {
+          ...payload,
+          firstObservedAt: existing.firstObservedAt ?? fetchedAt,
+        });
+        employmentId = existing.id;
+      } catch (error) {
+        if (
+          !experience.isCurrent ||
+          !companyId ||
+          !isUniqueViolation(error, "employments_current_person_company_idx")
+        ) {
+          throw error;
+        }
+        const recovered = await recoverCurrentEmploymentConflict(db, {
+          personId,
+          companyId,
+          payload: {
+            ...payload,
+            firstObservedAt: existing.firstObservedAt ?? fetchedAt,
+          },
+        });
+        employmentId = recovered.id;
+      }
     } else {
-      const created = await entitiesRepo.createEmployment(db, {
-        personId,
-        ...payload,
-        firstObservedAt: fetchedAt,
-        missedRefreshCount: 0,
-      });
-      employmentId = created.id;
+      try {
+        const created = await entitiesRepo.createEmployment(db, {
+          personId,
+          ...payload,
+          firstObservedAt: fetchedAt,
+          missedRefreshCount: 0,
+        });
+        employmentId = created.id;
+      } catch (error) {
+        if (
+          !experience.isCurrent ||
+          !companyId ||
+          !isUniqueViolation(error, "employments_current_person_company_idx")
+        ) {
+          throw error;
+        }
+        const recovered = await recoverCurrentEmploymentConflict(db, {
+          personId,
+          companyId,
+          payload: {
+            ...payload,
+            firstObservedAt: fetchedAt,
+            missedRefreshCount: 0,
+          },
+        });
+        employmentId = recovered.id;
+      }
     }
 
     if (input.runId) {
@@ -442,4 +513,5 @@ export const __test = {
   resolveEmployerCompanyId,
   findEmploymentForUpsert,
   isLeadershipTitle,
+  recoverCurrentEmploymentConflict,
 };

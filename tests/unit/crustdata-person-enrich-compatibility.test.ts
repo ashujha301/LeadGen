@@ -103,6 +103,38 @@ describe("crustdata person enrich compatibility", () => {
     expect(results[0]?.experience[1]?.crustdataCompanyId).toBeNull();
   });
 
+  it("treats zero position IDs as missing provider identities", () => {
+    const payload = [
+      {
+        matched_on: "https://www.linkedin.com/in/example",
+        match_status: "matched",
+        matches: [
+          {
+            person_data: {
+              basic_profile: { name: "Example Person" },
+              experience: {
+                employment_details: {
+                  current: [
+                    { name: "First Co", position_id: 0 },
+                    { name: "Second Co", position_id: "0" },
+                    { name: "Third Co", position_id: 123 },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      },
+    ];
+
+    const results = parsePersonEnrich(payload);
+    expect(results[0]?.experience.map((row) => row.providerEmploymentId)).toEqual([
+      null,
+      null,
+      "123",
+    ]);
+  });
+
   it("uses matched_on when returned profile URL is absent", () => {
     const payload = [
       {

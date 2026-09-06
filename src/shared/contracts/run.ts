@@ -17,18 +17,23 @@ export const runStatusSchema = z.enum([
 
 export type RunStatus = z.infer<typeof runStatusSchema>;
 
-export const icpFilterSchema = z.object({
-  industries: z.array(z.string()).optional(),
-  locations: z.array(z.string()).optional(),
-  employeeRange: z
-    .object({
-      min: z.number().int().nonnegative().optional(),
-      max: z.number().int().positive().optional(),
-    })
-    .optional(),
-});
+export const icpFilterSchema = z
+  .object({
+    industries: z.array(z.string()).optional(),
+    locations: z.array(z.string()).optional(),
+  })
+  .strict();
 
 export type IcpFilter = z.infer<typeof icpFilterSchema>;
+
+export const runWarningSchema = z.object({
+  code: z.string(),
+  provider: z.string(),
+  title: z.string(),
+  message: z.string(),
+});
+
+export type RunWarning = z.infer<typeof runWarningSchema>;
 
 export const companyInputSchema = z
   .string()
@@ -146,6 +151,7 @@ export const runResponseSchema = z.object({
   status: runStatusSchema,
   progress: runProgressSchema.optional(),
   refresh: runRefreshMetadataSchema.optional(),
+  warnings: z.array(runWarningSchema).optional(),
   error: z
     .object({
       code: z.string(),

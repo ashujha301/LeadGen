@@ -96,6 +96,7 @@ export function LeadDetailView({ lead, graph, headerSlot }: LeadDetailViewProps)
             timelineStatus={lead.timelineStatus}
             calculatedExperienceMonths={lead.calculatedExperienceMonths}
             providerExperienceYears={lead.providerExperienceYears}
+            personId={lead.personId}
           />
         </TabsContent>
         <TabsContent

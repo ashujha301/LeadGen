@@ -51,7 +51,6 @@ export const apiClient = {
     icp?: {
       industries?: string[];
       locations?: string[];
-      employeeRange?: { min?: number; max?: number };
     };
     roleCriteria?: RoleCriteria;
     targetRoles?: string[];
@@ -110,6 +109,20 @@ export const apiClient = {
   async getPerson(personId: string) {
     const res = await fetch(`${API_BASE}/v1/people/${personId}`);
     return (await parseResponse<PersonDetail>(res)).data;
+  },
+
+  async backfillPersonTimeline(personId: string) {
+    const res = await fetch(`${API_BASE}/v1/people/${personId}/enrich-timeline`, {
+      method: "POST",
+    });
+    return (
+      await parseResponse<{
+        timelineStatus: string;
+        employmentCount: number;
+        calculatedTotalMonths: number | null;
+        providerExperienceYears: number | null;
+      }>(res)
+    ).data;
   },
 
   async naturalSearch(query: string, runId?: string) {

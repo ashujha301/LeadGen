@@ -88,7 +88,7 @@ export default async function PersonDetailPage({
       )}
 
       <section className="rounded-md border border-[var(--border)] bg-surface p-4">
-        <EmploymentTimeline employments={person.employments} />
+        <EmploymentTimeline employments={person.employments} personId={person.id} />
       </section>
 
       {person.evidence.length > 0 && (

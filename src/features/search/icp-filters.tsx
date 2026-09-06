@@ -74,8 +74,6 @@ export function IcpFilters({ value, onChange, availableRoles = [], compact }: Ic
   const [customTitleInput, setCustomTitleInput] = useState("");
   const industry = value.industries?.[0] ?? "";
   const location = value.locations?.[0] ?? "";
-  const employeeMin = value.employeeRange?.min?.toString() ?? "";
-  const employeeMax = value.employeeRange?.max?.toString() ?? "";
   const roleCriteria = resolveRoleCriteria(value);
   const legacySelectedRoles = value.targetRoles ?? [];
 
@@ -151,7 +149,7 @@ export function IcpFilters({ value, onChange, availableRoles = [], compact }: Ic
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label htmlFor="icp-industry" className="text-xs text-muted">
             Target industry preference{" "}
@@ -173,46 +171,6 @@ export function IcpFilters({ value, onChange, availableRoles = [], compact }: Ic
             placeholder="United States"
             value={location}
             onChange={(e) => update({ locations: e.target.value ? [e.target.value] : undefined })}
-          />
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="icp-min-employees" className="text-xs text-muted">
-            Min employees
-          </label>
-          <Input
-            id="icp-min-employees"
-            type="number"
-            min={0}
-            placeholder="10"
-            value={employeeMin}
-            onChange={(e) =>
-              update({
-                employeeRange: {
-                  ...value.employeeRange,
-                  min: e.target.value ? Number(e.target.value) : undefined,
-                },
-              })
-            }
-          />
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="icp-max-employees" className="text-xs text-muted">
-            Max employees
-          </label>
-          <Input
-            id="icp-max-employees"
-            type="number"
-            min={1}
-            placeholder="500"
-            value={employeeMax}
-            onChange={(e) =>
-              update({
-                employeeRange: {
-                  ...value.employeeRange,
-                  max: e.target.value ? Number(e.target.value) : undefined,
-                },
-              })
-            }
           />
         </div>
       </div>

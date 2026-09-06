@@ -23,6 +23,9 @@ vi.mock("@/server/infrastructure/db", () => ({
     createRun,
     countRunsCreatedSince,
   },
+  connectorAttemptsRepo: {
+    getConnectorAttemptsByRunId: vi.fn().mockResolvedValue([]),
+  },
   requestLimitsRepo: {
     getOrCreateRequestLimit: vi.fn().mockResolvedValue({ runCount: 0 }),
     incrementRunCount: vi.fn(),

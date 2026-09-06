@@ -58,7 +58,11 @@ async function recordConnectorAttempt(
     status,
     durationMs,
     errorCode:
-      result.status === "error" ? result.error : result.status === "disabled" ? "disabled" : null,
+      result.status === "error"
+        ? (result.errorCode ?? result.error)
+        : result.status === "disabled"
+          ? "disabled"
+          : null,
     recordsReturned: recordsReturned ?? null,
     attempts: 1,
   });

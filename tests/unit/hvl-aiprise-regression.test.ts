@@ -4,13 +4,13 @@ import { pickCanonicalLeadPerPerson } from "@/server/domain/leads/hvl-person-ded
 import { shouldMarkLeadStale } from "@/server/domain/leads/stale-policy";
 
 describe("HVL AiPrise / score-gate regression", () => {
-  it("accepts score>=35 without role match when not stale", () => {
+  it("accepts score>=50 without role match when not stale", () => {
     expect(
       qualifiesAsHighValueLead({
         scoreVersion: 2,
         roleMatch: false,
         roleMatchFinal: false,
-        finalScore: 36,
+        finalScore: 50,
         confidence: 0.99,
         isStale: false,
         hasVerifiedCurrentEmployment: true,

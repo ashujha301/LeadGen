@@ -8,6 +8,7 @@ export {
   runRefreshChangesSchema,
   runRefreshMetadataSchema,
   runResponseSchema,
+  runWarningSchema,
   type RunStatus,
   type IcpFilter,
   type CreateRunRequest,
@@ -16,6 +17,7 @@ export {
   type RunProgress,
   type RunRefreshChanges,
   type RunRefreshMetadata,
+  type RunWarning,
   type RunResponse,
 } from "./run";
 

@@ -60,6 +60,49 @@ describe("crustdata person enrich compatibility", () => {
     expect(results[0]?.experience[1]?.endDate).toBe("2013-12-31");
   });
 
+  it("accepts null crustdata_company_id on past employment instead of failing the whole enrich", () => {
+    const payload = [
+      {
+        matched_on: "https://www.linkedin.com/in/srinivasansrinath/",
+        match_status: "matched",
+        matches: [
+          {
+            person_data: {
+              basic_profile: { name: "Srinath Srinivasan" },
+              experience: {
+                employment_details: {
+                  current: [
+                    {
+                      name: "Current Co",
+                      title: "Engineer",
+                      crustdata_company_id: 101,
+                      start_date: "2020-01-01",
+                    },
+                  ],
+                  past: [
+                    {
+                      name: "Past Co",
+                      title: "Intern",
+                      crustdata_company_id: null,
+                      start_date: "2018-01-01",
+                      end_date: "2019-12-31",
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        ],
+      },
+    ];
+
+    const results = parsePersonEnrich(payload);
+    expect(results[0]?.status).toBe("matched");
+    expect(results[0]?.experience).toHaveLength(2);
+    expect(results[0]?.experience[0]?.crustdataCompanyId).toBe("101");
+    expect(results[0]?.experience[1]?.crustdataCompanyId).toBeNull();
+  });
+
   it("uses matched_on when returned profile URL is absent", () => {
     const payload = [
       {

@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createRunRequestSchema } from "@/shared/contracts";
 
 describe("API validation", () => {
-  it("accepts a valid create run request", () => {
+  it("accepts a valid create run request with industries and locations only", () => {
     const result = createRunRequestSchema.safeParse({
       domain: "example.com",
       icp: {
         industries: ["B2B SaaS"],
         locations: ["United States"],
-        employeeRange: { min: 10, max: 500 },
       },
       targetRoles: ["ceo", "founder"],
     });
@@ -26,10 +25,13 @@ describe("API validation", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects negative employee minimums", () => {
+  it("rejects create-run requests that include employeeRange", () => {
     const result = createRunRequestSchema.safeParse({
       domain: "example.com",
-      icp: { employeeRange: { min: -1 } },
+      icp: {
+        industries: ["B2B SaaS"],
+        employeeRange: { min: 10, max: 500 },
+      },
     });
     expect(result.success).toBe(false);
   });

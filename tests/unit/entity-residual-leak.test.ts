@@ -76,7 +76,7 @@ describe("entity detail residual leak hardening", () => {
     ]);
   });
 
-  it("getPerson only returns employments at companies the user owns", async () => {
+  it("getPerson returns the full employment timeline once the user owns the person", async () => {
     userOwnsPerson.mockResolvedValue(true);
     getPersonById.mockResolvedValue({
       id: "p1",
@@ -107,18 +107,19 @@ describe("entity detail residual leak hardening", () => {
         endDate: null,
         isCurrent: false,
         confidence: 1,
-        employerName: null,
+        employerName: "Other Co",
         employerDomain: null,
       },
     ]);
-    listOwnedCompanyIdsForPerson.mockResolvedValue(["c-owned"]);
-    getCompanyById.mockResolvedValue({ id: "c-owned", name: "Owned Co" });
+    getCompanyById.mockImplementation(async (_db: unknown, id: string) =>
+      id === "c-owned" ? { id: "c-owned", name: "Owned Co" } : { id: "c-other", name: "Other Co" },
+    );
 
     const { entityService } = await import("@/server/application/services/entity-service");
     const detail = await entityService.getPerson("p1", "user-a");
 
-    expect(listOwnedCompanyIdsForPerson).toHaveBeenCalledWith({}, "p1", "user-a");
-    expect(detail?.employments).toHaveLength(1);
-    expect(detail?.employments[0]?.companyId).toBe("c-owned");
+    expect(listOwnedCompanyIdsForPerson).not.toHaveBeenCalled();
+    expect(detail?.employments).toHaveLength(2);
+    expect(detail?.employments.map((item) => item.companyId)).toEqual(["c-owned", "c-other"]);
   });
 });

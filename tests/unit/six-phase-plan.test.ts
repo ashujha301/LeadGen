@@ -59,17 +59,17 @@ describe("same-company name dedup", () => {
   });
 });
 
-describe("lenient high value lead thresholds", () => {
-  it("uses 35 score and 0.35 confidence", () => {
-    expect(HIGH_VALUE_LEAD_THRESHOLDS.minScore).toBe(35);
-    expect(HIGH_VALUE_LEAD_THRESHOLDS.minConfidence).toBe(0.35);
+describe("high value lead thresholds", () => {
+  it("uses 50 score and 0.50 confidence", () => {
+    expect(HIGH_VALUE_LEAD_THRESHOLDS.minScore).toBe(50);
+    expect(HIGH_VALUE_LEAD_THRESHOLDS.minConfidence).toBe(0.5);
     expect(
       qualifiesAsHighValueLead({
         scoreVersion: 2,
         roleMatchFinal: false,
         roleMatch: false,
-        finalScore: 36,
-        confidence: 0.36,
+        finalScore: 50,
+        confidence: 0.5,
         isStale: false,
         hasVerifiedCurrentEmployment: true,
       }),

@@ -19,11 +19,21 @@ describe("qualifiesAsHighValueLead (score gate without role)", () => {
   });
 
   it("rejects below score threshold", () => {
-    expect(qualifiesAsHighValueLead({ ...base, finalScore: 34.99 })).toBe(false);
+    expect(qualifiesAsHighValueLead({ ...base, finalScore: 49.99 })).toBe(false);
   });
 
   it("rejects below confidence threshold", () => {
-    expect(qualifiesAsHighValueLead({ ...base, confidence: 0.34 })).toBe(false);
+    expect(qualifiesAsHighValueLead({ ...base, confidence: 0.49 })).toBe(false);
+  });
+
+  it("qualifies at inclusive score and confidence boundaries", () => {
+    expect(
+      qualifiesAsHighValueLead({
+        ...base,
+        finalScore: 50,
+        confidence: 0.5,
+      }),
+    ).toBe(true);
   });
 
   it("rejects stale leads", () => {
@@ -40,8 +50,8 @@ describe("qualifiesAsHighValueLead (score gate without role)", () => {
     expect(
       passesHighValueScoreGates({
         scoreVersion: 2,
-        finalScore: 39,
-        confidence: 0.99,
+        finalScore: 50,
+        confidence: 0.5,
         isStale: false,
       }),
     ).toBe(true);

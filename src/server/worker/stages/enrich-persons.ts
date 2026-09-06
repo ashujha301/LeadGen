@@ -65,7 +65,7 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
     status:
       result.status === "success" ? "success" : result.status === "disabled" ? "skipped" : "failed",
     durationMs: Date.now() - startedAt,
-    errorCode: result.status === "error" ? result.error : null,
+    errorCode: result.status === "error" ? (result.errorCode ?? result.error) : null,
     recordsReturned: result.status === "success" ? result.data.length : null,
     attempts: 1,
   });

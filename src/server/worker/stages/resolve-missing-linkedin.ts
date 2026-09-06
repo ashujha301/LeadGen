@@ -57,7 +57,7 @@ export async function resolveMissingLinkedInProfiles(ctx: StageContext): Promise
             ? "skipped"
             : "failed",
       durationMs: Date.now() - startedAt,
-      errorCode: result.status === "error" ? result.error : null,
+      errorCode: result.status === "error" ? (result.errorCode ?? result.error) : null,
       recordsReturned: result.status === "success" && result.data ? 1 : 0,
       attempts: 1,
     });

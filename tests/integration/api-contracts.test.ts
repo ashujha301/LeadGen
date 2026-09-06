@@ -45,6 +45,7 @@ describe("API route contract characterization", () => {
         "v1/leads/[leadId]",
         "v1/leads/[leadId]/graph",
         "v1/people/[personId]",
+        "v1/people/[personId]/enrich-timeline",
         "v1/runs",
         "v1/runs/[runId]",
         "v1/runs/[runId]/cancel",

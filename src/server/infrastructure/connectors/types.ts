@@ -3,7 +3,7 @@ export type ConnectorStatus = "success" | "error" | "disabled";
 export type ConnectorResult<T> =
   | { status: "success"; data: T }
   | { status: "disabled"; reason: string }
-  | { status: "error"; error: string };
+  | { status: "error"; error: string; errorCode?: string };
 
 export type CompanyPageFetchResult = {
   url: string;

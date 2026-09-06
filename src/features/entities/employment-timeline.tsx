@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatPercent } from "@/shared/utils/formatters";
 import { Badge } from "@/components/ui/badge";
 import type { TimelineStatus } from "@/shared/contracts";
+import { TimelineBackfillButton } from "@/features/entities/timeline-backfill-button";
 
 type Employment = {
   companyId: string | null;
@@ -20,6 +21,8 @@ type EmploymentTimelineProps = {
   timelineStatus?: TimelineStatus;
   calculatedExperienceMonths?: number | null;
   providerExperienceYears?: number | null;
+  /** When set, offers a Crustdata person-enrich refresh for the timeline. */
+  personId?: string;
 };
 
 function formatDateRange(start: string | null, end: string | null, isCurrent: boolean): string {
@@ -54,6 +57,7 @@ export function EmploymentTimeline({
   timelineStatus,
   calculatedExperienceMonths,
   providerExperienceYears,
+  personId,
 }: EmploymentTimelineProps) {
   const sorted = [...employments].sort((a, b) => {
     if (a.isCurrent && !b.isCurrent) return -1;
@@ -68,17 +72,21 @@ export function EmploymentTimeline({
   if (sorted.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-[var(--border)] p-6 text-center text-sm text-muted">
-        {statusMessage(status)}
+        <p>{statusMessage(status)}</p>
+        {personId ? <TimelineBackfillButton personId={personId} className="mt-3" /> : null}
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <h3 className="flex items-center gap-2 text-sm font-medium">
-        <Briefcase className="h-4 w-4 text-accent" />
-        Employment timeline
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-medium">
+          <Briefcase className="h-4 w-4 text-accent" />
+          Employment timeline
+        </h3>
+        {personId ? <TimelineBackfillButton personId={personId} /> : null}
+      </div>
       {(calculatedExperienceMonths != null || providerExperienceYears != null) && (
         <p className="text-xs text-muted">
           {calculatedExperienceMonths != null

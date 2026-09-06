@@ -46,7 +46,7 @@ export type CrustdataOutcome<T> =
   | { status: "no_match"; meta: CrustdataRequestMeta }
   | { status: "terminal"; outcome: "not_found" | "redacted"; meta: CrustdataRequestMeta }
   | { status: "disabled"; reason: string }
-  | { status: "error"; error: string; meta?: CrustdataRequestMeta };
+  | { status: "error"; error: string; errorCode?: string; meta?: CrustdataRequestMeta };
 
 let limitersInitialized = false;
 
@@ -208,9 +208,19 @@ async function fetchWithRetry<T>(
           }
 
           if (response.status === 403) {
+            const errorBody = await response.json().catch(() => null);
+            const sanitized = sanitizeCrustdataError(errorBody);
+            const errorCode = classifyCrustdata403(sanitized);
+            console.warn(
+              `[crustdata] http_403 endpoint=${options.endpoint} code=${errorCode} reason=${sanitized.reason} type=${sanitized.type} requestId=${sanitized.requestId} durationMs=${durationMs} attempts=${attempts} credits=${creditsUsed ?? "n/a"}`,
+            );
             return {
               kind: "error" as const,
-              error: "Permission or credit failure",
+              error:
+                errorCode === "CRUSTDATA_CREDITS_EXHAUSTED"
+                  ? "Crustdata credits exhausted"
+                  : "Crustdata access denied",
+              errorCode,
               meta: buildMeta(
                 options.endpoint,
                 response.status,
@@ -317,6 +327,7 @@ async function fetchWithRetry<T>(
       return {
         status: "error",
         error: result.error,
+        errorCode: "errorCode" in result ? result.errorCode : undefined,
         meta: result.meta,
       };
     } catch (error) {
@@ -520,10 +531,21 @@ function emptyEnrichResult(
 
 function describeZodFailure(error: ZodError): { path: string; type: string } {
   const issue = error.issues[0] as
-    { path?: Array<string | number>; received?: unknown; code?: string } | undefined;
+    | {
+        path?: Array<string | number>;
+        received?: unknown;
+        code?: string;
+        unionErrors?: Array<{ issues?: Array<{ received?: unknown }> }>;
+      }
+    | undefined;
+  const received =
+    issue?.received ??
+    issue?.unionErrors?.[0]?.issues?.[0]?.received ??
+    issue?.code ??
+    "unknown";
   return {
     path: issue?.path?.join(".") || "unknown",
-    type: String(issue?.received ?? issue?.code ?? "unknown"),
+    type: String(received),
   };
 }
 
@@ -564,28 +586,63 @@ export function sanitizeCrustdataError(body: unknown): {
   if (!body || typeof body !== "object") {
     return { type: null, reason: null, requestId: null };
   }
+
   const record = body as Record<string, unknown>;
+  const nested =
+    record.error && typeof record.error === "object"
+      ? (record.error as Record<string, unknown>)
+      : null;
+
   const type =
     typeof record.type === "string"
       ? record.type
-      : typeof record.error === "string"
-        ? record.error
-        : null;
+      : typeof nested?.type === "string"
+        ? nested.type
+        : typeof record.error === "string"
+          ? record.error
+          : null;
+
   const reason =
     typeof record.reason === "string"
       ? record.reason
-      : typeof record.description === "string"
-        ? record.description
-        : typeof record.message === "string"
-          ? record.message
-          : null;
+      : typeof nested?.reason === "string"
+        ? nested.reason
+        : typeof record.description === "string"
+          ? record.description
+          : typeof nested?.description === "string"
+            ? nested.description
+            : typeof record.message === "string"
+              ? record.message
+              : typeof nested?.message === "string"
+                ? nested.message
+                : null;
+
   const requestId =
     typeof record.request_id === "string"
       ? record.request_id
       : typeof record.requestId === "string"
         ? record.requestId
-        : null;
+        : typeof nested?.request_id === "string"
+          ? nested.request_id
+          : typeof nested?.requestId === "string"
+            ? nested.requestId
+            : null;
+
   return { type, reason, requestId };
+}
+
+const CREDIT_EXHAUSTION_PATTERN =
+  /insufficient\s+credits?|credits?\s+(are\s+)?exhausted|out\s+of\s+credits?|no\s+credits?\s+remaining|credit\s+limit/i;
+
+export function classifyCrustdata403(sanitized: {
+  type: string | null;
+  reason: string | null;
+}): "CRUSTDATA_CREDITS_EXHAUSTED" | "CRUSTDATA_ACCESS_DENIED" {
+  const haystack = [sanitized.type, sanitized.reason].filter(Boolean).join(" ");
+  if (CREDIT_EXHAUSTION_PATTERN.test(haystack)) {
+    return "CRUSTDATA_CREDITS_EXHAUSTED";
+  }
+  return "CRUSTDATA_ACCESS_DENIED";
 }
 
 function summarizeRequestedFields(body: unknown): string {
@@ -721,7 +778,7 @@ export async function searchPersonByNameAndCompany(
     return { status: "disabled", reason: outcome.reason };
   }
   if (outcome.status === "error") {
-    return { status: "error", error: outcome.error };
+    return { status: "error", error: outcome.error, errorCode: outcome.errorCode };
   }
   return { status: "success", data: null };
 }
@@ -766,7 +823,7 @@ export async function enrichPerson(
     return { status: "disabled", reason: outcome.reason };
   }
   if (outcome.status === "error") {
-    return { status: "error", error: outcome.error };
+    return { status: "error", error: outcome.error, errorCode: outcome.errorCode };
   }
   return { status: "error", error: "terminal_outcome" };
 }
@@ -784,7 +841,7 @@ function toConnectorResult<T>(outcome: CrustdataOutcome<T>): ConnectorResult<T> 
   if (outcome.status === "disabled") {
     return { status: "disabled", reason: outcome.reason };
   }
-  return { status: "error", error: outcome.error };
+  return { status: "error", error: outcome.error, errorCode: outcome.errorCode };
 }
 
 /** Escape a custom title for safe use in Crustdata (.) conditions. */

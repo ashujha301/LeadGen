@@ -2,7 +2,6 @@ import type { CompanyDetail, PersonDetail } from "@/shared/contracts";
 import {
   getDb,
   entitiesRepo,
-  listOwnedCompanyIdsForPerson,
   listOwnedPersonIdsForCompany,
   sourcesRepo,
   userOwnsCompany,
@@ -113,14 +112,10 @@ export const entityService = {
       return null;
     }
 
-    const ownedCompanyIds = new Set(await listOwnedCompanyIdsForPerson(db, personId, userId));
     const contacts = await entitiesRepo.getContactPointsByPersonId(db, personId);
     const employments = await entitiesRepo.getEmploymentsByPersonId(db, personId);
-    const scopedEmployments = employments.filter(
-      (employment) => employment.companyId != null && ownedCompanyIds.has(employment.companyId),
-    );
     const employmentDetails = await Promise.all(
-      scopedEmployments.map(async (employment) => {
+      employments.map(async (employment) => {
         const company = employment.companyId
           ? await entitiesRepo.getCompanyById(db, employment.companyId)
           : null;

@@ -76,13 +76,13 @@ describe("HVL navigation route contracts", () => {
 });
 
 describe("HVL navigation + score-gate regression", () => {
-  it("role-unmatched score>=35 remains HVL-eligible for navigation universe", () => {
+  it("role-unmatched score>=50 remains HVL-eligible for navigation universe", () => {
     expect(
       qualifiesAsHighValueLead({
         scoreVersion: 2,
         roleMatch: false,
         roleMatchFinal: false,
-        finalScore: 36,
+        finalScore: 50,
         confidence: 0.99,
         isStale: false,
         hasVerifiedCurrentEmployment: true,

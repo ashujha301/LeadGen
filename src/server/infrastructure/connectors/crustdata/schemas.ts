@@ -1,9 +1,12 @@
 import { z } from "zod";
 
-const providerIdSchema = z.union([z.string(), z.number()]).transform(String);
+const providerIdSchema = z
+  .union([z.string(), z.number(), z.null()])
+  .optional()
+  .transform((value) => (value == null ? undefined : String(value)));
 
 export const crustdataPersonRefSchema = z.object({
-  crustdata_person_id: providerIdSchema.optional(),
+  crustdata_person_id: providerIdSchema,
   name: z.string().optional(),
   title: z.string().nullable().optional(),
   professional_network_profile_url: z.string().nullable().optional(),
@@ -12,7 +15,7 @@ export const crustdataPersonRefSchema = z.object({
 });
 
 const crustdataCompanyDataSchema = z.object({
-  crustdata_company_id: providerIdSchema.optional(),
+  crustdata_company_id: providerIdSchema,
   updated_at: z.string().optional(),
   basic_info: z
     .object({
@@ -50,7 +53,7 @@ export const crustdataCompanyEnrichEntrySchema = z.object({
 export const crustdataCompanyEnrichResponseSchema = z.array(crustdataCompanyEnrichEntrySchema);
 
 const crustdataSearchProfileSchema = z.object({
-  crustdata_person_id: providerIdSchema.optional(),
+  crustdata_person_id: providerIdSchema,
   basic_profile: z
     .object({
       name: z.string().optional(),
@@ -124,9 +127,9 @@ const employmentDateSchema = z
 
 const crustdataEmploymentDetailSchema = z
   .object({
-    position_id: z.union([z.string(), z.number()]).optional(),
-    name: z.string(),
-    crustdata_company_id: providerIdSchema.optional(),
+    position_id: z.union([z.string(), z.number(), z.null()]).optional(),
+    name: z.string().nullable().optional().transform((value) => value?.trim() || "Unknown company"),
+    crustdata_company_id: providerIdSchema,
     company_website_domain: z.string().nullable().optional(),
     company_professional_network_url: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
@@ -137,7 +140,7 @@ const crustdataEmploymentDetailSchema = z
 
 const crustdataPersonDataSchema = z
   .object({
-    crustdata_person_id: providerIdSchema.optional(),
+    crustdata_person_id: providerIdSchema,
     updated_at: z.string().optional(),
     basic_profile: z
       .object({

@@ -36,8 +36,6 @@ export function DomainSearchForm() {
 
     const industry = filters.industries?.[0];
     const location = filters.locations?.[0];
-    const employeeMin = filters.employeeRange?.min;
-    const employeeMax = filters.employeeRange?.max;
     const roleCriteria = buildRoleCriteriaPayload(filters);
 
     try {
@@ -46,14 +44,6 @@ export function DomainSearchForm() {
         icp: {
           ...(industry ? { industries: [industry] } : {}),
           ...(location ? { locations: [location] } : {}),
-          ...(employeeMin != null || employeeMax != null
-            ? {
-                employeeRange: {
-                  ...(employeeMin != null ? { min: employeeMin } : {}),
-                  ...(employeeMax != null ? { max: employeeMax } : {}),
-                },
-              }
-            : {}),
         },
         ...(roleCriteria ? { roleCriteria } : {}),
       })) as { id: string };

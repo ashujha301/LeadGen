@@ -9,6 +9,7 @@ import type {
 } from "@/shared/contracts";
 import { getEnv } from "@/shared/config/server";
 import {
+  connectorAttemptsRepo,
   getDb,
   requestLimitsRepo,
   runsRepo,
@@ -18,6 +19,7 @@ import {
 
 import { enqueueRun, cancelQueuedRun } from "@/server/infrastructure/queue/web-queue";
 import { abortRunProcessing } from "@/server/infrastructure/run-abort";
+import { buildRunWarnings } from "@/server/application/services/run-warnings";
 
 export class RunQuotaError extends Error {
   constructor(message: string) {
@@ -58,8 +60,11 @@ function toIso(date: Date | null | undefined): string | null {
   return date ? date.toISOString() : null;
 }
 
-function toRunResponse(run: SearchRun, refresh?: RunRefreshMetadata): RunResponse {
+async function toRunResponse(run: SearchRun, refresh?: RunRefreshMetadata): Promise<RunResponse> {
+  const db = getDb();
   const progress = run.progress as RunProgress | null | undefined;
+  const attempts = await connectorAttemptsRepo.getConnectorAttemptsByRunId(db, run.id);
+  const warnings = buildRunWarnings(attempts);
 
   return {
     id: run.id,
@@ -68,6 +73,7 @@ function toRunResponse(run: SearchRun, refresh?: RunRefreshMetadata): RunRespons
     status: run.status as RunStatus,
     progress: progress ?? { stage: run.status as RunStatus },
     refresh,
+    warnings: warnings.length > 0 ? warnings : undefined,
     error:
       run.errorCode && run.errorMessage
         ? {
@@ -161,7 +167,7 @@ export const runService = {
   async listRecent(userId: string, limit = 10): Promise<RunResponse[]> {
     const db = getDb();
     const runs = await runsRepo.listRecentRunsForUser(db, userId, limit);
-    return runs.map((run) => toRunResponse(run));
+    return Promise.all(runs.map((run) => toRunResponse(run)));
   },
 
   async cancelRun(runId: string, userId: string): Promise<RunResponse | null> {

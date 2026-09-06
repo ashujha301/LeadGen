@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { apiClient, ApiClientError } from "@/shared/utils/api-client";
 import { formatDomain } from "@/shared/utils/formatters";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { CRUSTDATA_CREDITS_EXHAUSTED } from "@/shared/config/crustdata-warnings";
 import { LeadTable } from "@/features/leads/lead-table";
 import { NaturalSearch } from "@/features/search/natural-search";
 import { RunProgressPanel } from "@/features/runs/run-progress";
@@ -243,6 +245,20 @@ export function RunDetailClient({ runId }: RunDetailClientProps) {
       {(isComplete || isActive) && (
         <>
           {isComplete && <NaturalSearch runId={runId} />}
+
+          {run.warnings
+            ?.filter((warning) => warning.code === CRUSTDATA_CREDITS_EXHAUSTED)
+            .map((warning) => (
+              <Alert
+                key={warning.code}
+                title="Crustdata enrichment unavailable"
+                variant="destructive"
+              >
+                {
+                  "Crustdata credits are exhausted. Check your Crustdata account. Website results will continue, but LinkedIn and employment enrichment may be incomplete."
+                }
+              </Alert>
+            ))}
 
           <section className="space-y-3">
             <Tabs

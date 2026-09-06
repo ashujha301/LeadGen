@@ -241,7 +241,68 @@ describe("Crustdata connector", () => {
 
     const result = await enrichCompany("appknox.com");
     expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.errorCode).toBe("CRUSTDATA_ACCESS_DENIED");
+    }
     expect(enrichFetchCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it("classifies explicit insufficient-credit 403 as CRUSTDATA_CREDITS_EXHAUSTED", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ reason: "Insufficient credits for this request" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await enrichCompany("appknox.com");
+    expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.errorCode).toBe("CRUSTDATA_CREDITS_EXHAUSTED");
+      expect(result.error).not.toMatch(/test-key|Authorization|Bearer/i);
+    }
+    expect(enrichFetchCalls(fetchMock)).toHaveLength(1);
+  });
+
+  it("classifies nested credit exhaustion bodies", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { type: "forbidden", reason: "credits exhausted on account" },
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await enrichCompany("appknox.com");
+    expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.errorCode).toBe("CRUSTDATA_CREDITS_EXHAUSTED");
+    }
+  });
+
+  it("does not label generic permission 403 as credit exhaustion", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ reason: "Permission denied for this endpoint" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await enrichCompany("appknox.com");
+    expect(result.status).toBe("error");
+    if (result.status === "error") {
+      expect(result.errorCode).toBe("CRUSTDATA_ACCESS_DENIED");
+    }
   });
 
   it("retries 503 with backoff then succeeds", async () => {

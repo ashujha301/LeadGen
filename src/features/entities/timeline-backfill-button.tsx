@@ -24,9 +24,7 @@ export function TimelineBackfillButton({ personId, className = "" }: TimelineBac
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof ApiClientError
-          ? err.message
-          : "Failed to re-run Crustdata person enrich.",
+        err instanceof ApiClientError ? err.message : "Failed to re-run Crustdata person enrich.",
       );
     } finally {
       setLoading(false);

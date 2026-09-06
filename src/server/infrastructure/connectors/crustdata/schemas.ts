@@ -128,7 +128,11 @@ const employmentDateSchema = z
 const crustdataEmploymentDetailSchema = z
   .object({
     position_id: z.union([z.string(), z.number(), z.null()]).optional(),
-    name: z.string().nullable().optional().transform((value) => value?.trim() || "Unknown company"),
+    name: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((value) => value?.trim() || "Unknown company"),
     crustdata_company_id: providerIdSchema,
     company_website_domain: z.string().nullable().optional(),
     company_professional_network_url: z.string().nullable().optional(),

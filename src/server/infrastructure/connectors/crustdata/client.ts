@@ -539,10 +539,7 @@ function describeZodFailure(error: ZodError): { path: string; type: string } {
       }
     | undefined;
   const received =
-    issue?.received ??
-    issue?.unionErrors?.[0]?.issues?.[0]?.received ??
-    issue?.code ??
-    "unknown";
+    issue?.received ?? issue?.unionErrors?.[0]?.issues?.[0]?.received ?? issue?.code ?? "unknown";
   return {
     path: issue?.path?.join(".") || "unknown",
     type: String(received),

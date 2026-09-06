@@ -62,9 +62,8 @@ describe("backfillPersonTimeline", () => {
       leadershipExperienceMonths: 0,
     });
 
-    const { backfillPersonTimeline } = await import(
-      "@/server/application/services/backfill-person-timeline"
-    );
+    const { backfillPersonTimeline } =
+      await import("@/server/application/services/backfill-person-timeline");
     const result = await backfillPersonTimeline("person-1", "user-a");
 
     expect(enrichPerson).toHaveBeenCalledWith(["https://linkedin.com/in/example"], {
@@ -95,9 +94,8 @@ describe("backfillPersonTimeline", () => {
       leadershipExperienceMonths: 0,
     });
 
-    const { backfillPersonTimeline } = await import(
-      "@/server/application/services/backfill-person-timeline"
-    );
+    const { backfillPersonTimeline } =
+      await import("@/server/application/services/backfill-person-timeline");
     const result = await backfillPersonTimeline("person-1", "user-a");
 
     expect(result.ok).toBe(true);
@@ -108,9 +106,8 @@ describe("backfillPersonTimeline", () => {
   it("requires a LinkedIn profile URL", async () => {
     getContactPointsByPersonId.mockResolvedValue([]);
     getPersonById.mockResolvedValue({ id: "person-1", profileUrl: null });
-    const { backfillPersonTimeline } = await import(
-      "@/server/application/services/backfill-person-timeline"
-    );
+    const { backfillPersonTimeline } =
+      await import("@/server/application/services/backfill-person-timeline");
 
     const result = await backfillPersonTimeline("person-1", "user-a");
     expect(result.ok).toBe(false);

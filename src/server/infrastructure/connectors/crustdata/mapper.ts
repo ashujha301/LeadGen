@@ -38,6 +38,20 @@ function filterNamedPeople<T extends { name?: string | null }>(
   return people.filter((person): person is T & { name: string } => Boolean(person.name?.trim()));
 }
 
+function normalizePositionId(value: string | number | null | undefined): string | null {
+  if (value == null) {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const numericValue = Number(normalized);
+  return Number.isFinite(numericValue) && numericValue <= 0 ? null : normalized;
+}
+
 export function mapCompanyDataToResult(
   domain: string,
   data: CrustdataCompanyData,
@@ -89,7 +103,7 @@ function mapEmploymentDetails(
   isCurrent: boolean,
 ): CrustdataPersonExperience[] {
   return entries.map((entry) => ({
-    providerEmploymentId: entry.position_id != null ? String(entry.position_id) : null,
+    providerEmploymentId: normalizePositionId(entry.position_id),
     crustdataCompanyId: entry.crustdata_company_id ?? null,
     companyName: entry.name,
     companyDomain: entry.company_website_domain ?? null,

@@ -51,6 +51,7 @@ describe("API route contract characterization", () => {
         "v1/runs/[runId]/events",
         "v1/runs/[runId]/leads",
         "v1/search/natural",
+        "v1/search/natural/[sessionId]/resolve",
       ].sort(),
     );
   });

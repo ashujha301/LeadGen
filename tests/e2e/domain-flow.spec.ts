@@ -12,8 +12,8 @@ test.describe("domain search flow", () => {
   test("navigation links are accessible", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByRole("link", { name: "Connections" }).click();
-    await expect(page.getByRole("heading", { name: "Connections" })).toBeVisible();
+    await page.getByRole("link", { name: "Potential Connections" }).click();
+    await expect(page.getByRole("heading", { name: "Potential Connections" })).toBeVisible();
 
     await page.getByRole("link", { name: "Review" }).click();
     await expect(page.getByRole("heading", { name: "Entity review" })).toBeVisible();

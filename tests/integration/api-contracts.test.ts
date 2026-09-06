@@ -37,6 +37,7 @@ describe("API route contract characterization", () => {
         "health/live",
         "health/ready",
         "v1/companies/[companyId]",
+        "v1/connections",
         "v1/connections/overlap",
         "v1/entity-matches",
         "v1/exports/[runId]",

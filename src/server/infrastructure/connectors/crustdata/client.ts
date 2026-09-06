@@ -521,6 +521,7 @@ function emptyEnrichResult(
     matchedOn: null,
     providerExperienceYears: null,
     providerUpdatedAt: null,
+    matchConfidence: null,
     experience: [],
     education: [],
     skills: [],
@@ -571,7 +572,12 @@ export function parsePersonEnrich(payload: unknown): CrustdataPersonEnrichResult
       });
     }
 
-    return mapPersonDataToEnrichResult(match.person_data, status, parsed.data.matched_on ?? null);
+    return mapPersonDataToEnrichResult(
+      match.person_data,
+      status,
+      parsed.data.matched_on ?? null,
+      match.confidence_score ?? null,
+    );
   });
 }
 

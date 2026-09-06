@@ -226,6 +226,8 @@ export async function persistPersonEnrichment(
           enrichResult.providerExperienceYears != null
             ? String(enrichResult.providerExperienceYears)
             : null,
+        providerMatchConfidence:
+          enrichResult.matchConfidence != null ? String(enrichResult.matchConfidence) : null,
         fetchedAt,
       });
     }
@@ -278,6 +280,7 @@ export async function persistPersonEnrichment(
       employerDomain,
       employerProfessionalNetworkUrl,
       providerEmploymentId: experience.providerEmploymentId,
+      providerCompanyId: experience.crustdataCompanyId,
       providerFingerprint: fingerprint,
       providerUpdatedAt: enrichResult.providerUpdatedAt
         ? new Date(enrichResult.providerUpdatedAt)
@@ -397,6 +400,8 @@ export async function persistPersonEnrichment(
         enrichResult.providerExperienceYears != null
           ? String(enrichResult.providerExperienceYears)
           : null,
+      providerMatchConfidence:
+        enrichResult.matchConfidence != null ? String(enrichResult.matchConfidence) : null,
       fetchedAt,
     });
   }

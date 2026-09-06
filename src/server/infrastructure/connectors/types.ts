@@ -86,6 +86,7 @@ export type CrustdataPersonEnrichResult = {
   matchedOn: string | null;
   providerExperienceYears: number | null;
   providerUpdatedAt: string | null;
+  matchConfidence: number | null;
   experience: CrustdataPersonExperience[];
   education: Array<{ school?: string; degree?: string | null }>;
   skills: string[];

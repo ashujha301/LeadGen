@@ -31,24 +31,36 @@ CREATE TABLE IF NOT EXISTS "natural_search_documents" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );--> statement-breakpoint
-ALTER TABLE "natural_search_sessions"
-  ADD CONSTRAINT "natural_search_sessions_user_id_user_id_fk"
-  FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "natural_search_sessions"
-  ADD CONSTRAINT "natural_search_sessions_run_id_search_runs_id_fk"
-  FOREIGN KEY ("run_id") REFERENCES "public"."search_runs"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "natural_search_documents"
-  ADD CONSTRAINT "natural_search_documents_user_id_user_id_fk"
-  FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "natural_search_documents"
-  ADD CONSTRAINT "natural_search_documents_person_id_people_id_fk"
-  FOREIGN KEY ("person_id") REFERENCES "public"."people"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "natural_search_documents"
-  ADD CONSTRAINT "natural_search_documents_company_id_companies_id_fk"
-  FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "natural_search_documents"
-  ADD CONSTRAINT "natural_search_documents_lead_id_lead_candidates_id_fk"
-  FOREIGN KEY ("lead_id") REFERENCES "public"."lead_candidates"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "natural_search_sessions"
+    ADD CONSTRAINT "natural_search_sessions_user_id_user_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "natural_search_sessions"
+    ADD CONSTRAINT "natural_search_sessions_run_id_search_runs_id_fk"
+    FOREIGN KEY ("run_id") REFERENCES "public"."search_runs"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "natural_search_documents"
+    ADD CONSTRAINT "natural_search_documents_user_id_user_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "natural_search_documents"
+    ADD CONSTRAINT "natural_search_documents_person_id_people_id_fk"
+    FOREIGN KEY ("person_id") REFERENCES "public"."people"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "natural_search_documents"
+    ADD CONSTRAINT "natural_search_documents_company_id_companies_id_fk"
+    FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "natural_search_documents"
+    ADD CONSTRAINT "natural_search_documents_lead_id_lead_candidates_id_fk"
+    FOREIGN KEY ("lead_id") REFERENCES "public"."lead_candidates"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "natural_search_sessions_user_id_idx"
   ON "natural_search_sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "natural_search_sessions_expires_at_idx"

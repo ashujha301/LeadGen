@@ -21,24 +21,36 @@ CREATE TABLE IF NOT EXISTS "person_enrichment_runs" (
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );--> statement-breakpoint
-ALTER TABLE "employment_run_provenance"
-  ADD CONSTRAINT "employment_run_provenance_employment_id_employments_id_fk"
-  FOREIGN KEY ("employment_id") REFERENCES "public"."employments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "employment_run_provenance"
-  ADD CONSTRAINT "employment_run_provenance_run_id_search_runs_id_fk"
-  FOREIGN KEY ("run_id") REFERENCES "public"."search_runs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "employment_run_provenance"
-  ADD CONSTRAINT "employment_run_provenance_source_document_id_source_documents_id_fk"
-  FOREIGN KEY ("source_document_id") REFERENCES "public"."source_documents"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "person_enrichment_runs"
-  ADD CONSTRAINT "person_enrichment_runs_person_id_people_id_fk"
-  FOREIGN KEY ("person_id") REFERENCES "public"."people"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "person_enrichment_runs"
-  ADD CONSTRAINT "person_enrichment_runs_run_id_search_runs_id_fk"
-  FOREIGN KEY ("run_id") REFERENCES "public"."search_runs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "person_enrichment_runs"
-  ADD CONSTRAINT "person_enrichment_runs_source_document_id_source_documents_id_fk"
-  FOREIGN KEY ("source_document_id") REFERENCES "public"."source_documents"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "employment_run_provenance"
+    ADD CONSTRAINT "employment_run_provenance_employment_id_employments_id_fk"
+    FOREIGN KEY ("employment_id") REFERENCES "public"."employments"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "employment_run_provenance"
+    ADD CONSTRAINT "employment_run_provenance_run_id_search_runs_id_fk"
+    FOREIGN KEY ("run_id") REFERENCES "public"."search_runs"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "employment_run_provenance"
+    ADD CONSTRAINT "employment_run_provenance_source_document_id_source_documents_id_fk"
+    FOREIGN KEY ("source_document_id") REFERENCES "public"."source_documents"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "person_enrichment_runs"
+    ADD CONSTRAINT "person_enrichment_runs_person_id_people_id_fk"
+    FOREIGN KEY ("person_id") REFERENCES "public"."people"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "person_enrichment_runs"
+    ADD CONSTRAINT "person_enrichment_runs_run_id_search_runs_id_fk"
+    FOREIGN KEY ("run_id") REFERENCES "public"."search_runs"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "person_enrichment_runs"
+    ADD CONSTRAINT "person_enrichment_runs_source_document_id_source_documents_id_fk"
+    FOREIGN KEY ("source_document_id") REFERENCES "public"."source_documents"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "employment_run_provenance_employment_run_uidx"
   ON "employment_run_provenance" USING btree ("employment_id","run_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "employment_run_provenance_run_id_idx"
@@ -54,9 +66,11 @@ CREATE INDEX IF NOT EXISTS "person_enrichment_runs_person_id_idx"
 ALTER TABLE "ai_calls" ADD COLUMN IF NOT EXISTS "user_id" text;--> statement-breakpoint
 ALTER TABLE "ai_calls" ADD COLUMN IF NOT EXISTS "request_id" text;--> statement-breakpoint
 ALTER TABLE "ai_calls" ADD COLUMN IF NOT EXISTS "error_category" text;--> statement-breakpoint
-ALTER TABLE "ai_calls"
-  ADD CONSTRAINT "ai_calls_user_id_user_id_fk"
-  FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "ai_calls"
+    ADD CONSTRAINT "ai_calls_user_id_user_id_fk"
+    FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "ai_calls_user_id_idx" ON "ai_calls" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "ai_calls_request_id_idx" ON "ai_calls" USING btree ("request_id");--> statement-breakpoint
 INSERT INTO "employment_run_provenance" (

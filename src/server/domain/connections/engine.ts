@@ -242,10 +242,12 @@ export function discoverPotentialConnections(
         }
 
         const evidence = scoreEvidenceQuality({
-          hasProviderCompanyId: employerRowsA.some((row) => row.providerCompanyId) ||
+          hasProviderCompanyId:
+            employerRowsA.some((row) => row.providerCompanyId) ||
             employerRowsB.some((row) => row.providerCompanyId),
           employerMatchKind: matchKind,
-          datesComplete: employerRowsA.every((row) => row.startDate) &&
+          datesComplete:
+            employerRowsA.every((row) => row.startDate) &&
             employerRowsB.every((row) => row.startDate),
           provenanceFresh:
             employerRowsA.some((row) => row.provenanceFresh) &&

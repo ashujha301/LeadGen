@@ -48,10 +48,7 @@ export function toHalfOpenInterval(input: EmploymentIntervalInput): HalfOpenInte
   };
 }
 
-export function halfOpenOverlapDays(
-  a: HalfOpenInterval,
-  b: HalfOpenInterval,
-): number {
+export function halfOpenOverlapDays(a: HalfOpenInterval, b: HalfOpenInterval): number {
   const start = a.startInclusive > b.startInclusive ? a.startInclusive : b.startInclusive;
   const end = a.endExclusive < b.endExclusive ? a.endExclusive : b.endExclusive;
   if (compareDates(start, end) >= 0) {

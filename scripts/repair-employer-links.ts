@@ -2,12 +2,7 @@ import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import { normalizeDomain } from "@/server/domain/normalization/domain";
 import { normalizeUrl } from "@/server/domain/normalization/url";
-import {
-  companies,
-  companyExternalProfiles,
-  employments,
-  getDb,
-} from "@/server/infrastructure/db";
+import { companies, companyExternalProfiles, employments, getDb } from "@/server/infrastructure/db";
 
 type RepairAction = {
   employmentId: string;

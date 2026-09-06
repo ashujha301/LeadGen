@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GitBranch, Home, Link2, Search, ShieldCheck, Star } from "lucide-react";
+import { GitBranch, Home, Link2, Search, Star } from "lucide-react";
 
 import { SignOutButton } from "@/features/auth/sign-out-button";
 import type { SessionUser } from "@/features/auth/session-guard";

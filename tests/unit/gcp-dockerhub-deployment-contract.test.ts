@@ -17,8 +17,10 @@ function listFilesRecursive(dir: string): string[] {
   for (const entry of entries) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...listFilesRecursive(full));
-    } else {
+      if (entry.name !== ".terraform") {
+        files.push(...listFilesRecursive(full));
+      }
+    } else if (entry.isFile()) {
       files.push(full);
     }
   }
@@ -27,6 +29,7 @@ function listFilesRecursive(dir: string): string[] {
 
 function terraformTree(): string {
   return listFilesRecursive(join(ROOT, "infra/terraform"))
+    .filter((path) => path.endsWith(".tf"))
     .map((path) => readFileSync(path, "utf8"))
     .join("\n");
 }

@@ -129,7 +129,8 @@ export function scorePotentialConnectionStrength(input: {
 
 export function scoreEvidenceQuality(input: {
   hasProviderCompanyId: boolean;
-  employerMatchKind: ReturnType<typeof employerMatchKind> | "domain" | "provider" | "linkedin" | "company" | "name";
+  employerMatchKind:
+    ReturnType<typeof employerMatchKind> | "domain" | "provider" | "linkedin" | "company" | "name";
   datesComplete: boolean;
   provenanceFresh: boolean;
 }): { score: number; label: EvidenceLabel } {

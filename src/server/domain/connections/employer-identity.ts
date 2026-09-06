@@ -9,7 +9,11 @@ export type EmployerIdentityInput = {
 
 function normalizeDomain(value: string | null | undefined): string | null {
   if (!value) return null;
-  const trimmed = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const trimmed = value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
   return trimmed || null;
 }
 
@@ -58,10 +62,7 @@ export function buildEmployerIdentityKey(input: EmployerIdentityInput): string |
   return null;
 }
 
-export function resolveSharedEmployerKey(
-  keyA: string | null,
-  keyB: string | null,
-): string | null {
+export function resolveSharedEmployerKey(keyA: string | null, keyB: string | null): string | null {
   if (!keyA || !keyB) {
     return null;
   }

@@ -143,10 +143,7 @@ export function PotentialConnectionsClient() {
 
     const cy = cytoscape({
       container: graphRef.current,
-      elements: [
-        ...[...nodes.values()].map((node) => ({ data: node })),
-        ...edges,
-      ],
+      elements: [...[...nodes.values()].map((node) => ({ data: node })), ...edges],
       style: [
         {
           selector: "node",
@@ -344,9 +341,7 @@ export function PotentialConnectionsClient() {
               className="h-[420px] w-full rounded-md border border-[var(--border)] bg-surface"
               data-testid="potential-connections-graph"
             />
-            {selectedItem && (
-              <EvidencePanel item={selectedItem} />
-            )}
+            {selectedItem && <EvidencePanel item={selectedItem} />}
           </TabsContent>
         </Tabs>
       )}
@@ -406,11 +401,7 @@ function ConnectionRow({
   );
 }
 
-function PersonCell({
-  person,
-}: {
-  person: PotentialConnectionItem["personA"];
-}) {
+function PersonCell({ person }: { person: PotentialConnectionItem["personA"] }) {
   return (
     <div className="space-y-0.5">
       <Link

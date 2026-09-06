@@ -5,7 +5,11 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 
-export type AiOperation = "extract_page" | "parse_search_query" | "explain_lead";
+export type AiOperation =
+  | "extract_page"
+  | "parse_search_query"
+  | "explain_lead"
+  | "embed_search_documents";
 
 export type StructuredAiRequest<TSchema extends z.ZodTypeAny> = {
   operation: AiOperation;
@@ -13,6 +17,8 @@ export type StructuredAiRequest<TSchema extends z.ZodTypeAny> = {
   schemaVersion: string;
   prompt: string;
   runId?: string;
+  userId?: string;
+  requestId?: string;
   db?: Db;
   signal?: AbortSignal;
 };
@@ -20,8 +26,25 @@ export type StructuredAiRequest<TSchema extends z.ZodTypeAny> = {
 export type StructuredAiResult<T> =
   | { status: "success"; data: T; responseId: string | null; durationMs: number }
   | { status: "disabled"; reason: string }
-  | { status: "timeout"; error: string; durationMs: number }
-  | { status: "error"; error: string; durationMs: number };
+  | { status: "timeout"; error: string; durationMs: number; errorCategory: "timeout" }
+  | {
+      status: "unavailable";
+      error: string;
+      durationMs: number;
+      errorCategory: "auth" | "invalid_model" | "disabled";
+    }
+  | {
+      status: "service_unavailable";
+      error: string;
+      durationMs: number;
+      errorCategory: "rate_limit" | "connection" | "provider_5xx";
+    }
+  | {
+      status: "error";
+      error: string;
+      durationMs: number;
+      errorCategory: "refusal" | "incomplete" | "malformed" | "unknown";
+    };
 
 let cachedClient: OpenAI | null = null;
 
@@ -41,23 +64,74 @@ function getOpenAiClient(): OpenAI | null {
   return cachedClient;
 }
 
-function extractResponseText(response: OpenAI.Responses.Response): string | null {
-  if (typeof response.output_text === "string" && response.output_text.trim()) {
-    return response.output_text;
+function getErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  if ("status" in error && typeof (error as { status: unknown }).status === "number") {
+    return (error as { status: number }).status;
+  }
+  return undefined;
+}
+
+function categorizeProviderError(error: unknown): {
+  status: Exclude<StructuredAiResult<unknown>["status"], "success" | "disabled">;
+  errorCategory:
+    | "timeout"
+    | "auth"
+    | "invalid_model"
+    | "rate_limit"
+    | "connection"
+    | "provider_5xx"
+    | "refusal"
+    | "incomplete"
+    | "malformed"
+    | "unknown";
+  message: string;
+} {
+  const message = error instanceof Error ? error.message : "Unknown OpenAI error";
+  const timedOut = error instanceof Error && error.name === "AbortError";
+  if (timedOut) {
+    return { status: "timeout", errorCategory: "timeout", message };
   }
 
-  for (const item of response.output ?? []) {
-    if (item.type !== "message") {
-      continue;
+  const status = getErrorStatus(error);
+  if (status === 401 || status === 403) {
+    return { status: "unavailable", errorCategory: "auth", message };
+  }
+  if (status === 404 || /model/i.test(message)) {
+    // Only treat as invalid model when status suggests it or message is explicit.
+    if (status === 404 || /invalid.*model|model.*not.*found/i.test(message)) {
+      return { status: "unavailable", errorCategory: "invalid_model", message };
     }
+  }
+  if (status === 429) {
+    return { status: "service_unavailable", errorCategory: "rate_limit", message };
+  }
+  if (status !== undefined && status >= 500) {
+    return { status: "service_unavailable", errorCategory: "provider_5xx", message };
+  }
+  if (/ECONNREFUSED|ENOTFOUND|fetch failed|network/i.test(message)) {
+    return { status: "service_unavailable", errorCategory: "connection", message };
+  }
 
-    for (const content of item.content) {
-      if (content.type === "output_text" && content.text.trim()) {
-        return content.text;
+  return { status: "error", errorCategory: "unknown", message };
+}
+
+function detectRefusalOrIncomplete(response: {
+  status?: string | null;
+  output?: Array<{ type?: string; content?: Array<{ type?: string; refusal?: string }> }>;
+  incomplete_details?: { reason?: string } | null;
+}): "refusal" | "incomplete" | null {
+  if (response.status === "incomplete") {
+    return "incomplete";
+  }
+  for (const item of response.output ?? []) {
+    if (item.type !== "message") continue;
+    for (const content of item.content ?? []) {
+      if (content.type === "refusal") {
+        return "refusal";
       }
     }
   }
-
   return null;
 }
 
@@ -80,10 +154,12 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
   if (request.db) {
     const aiCall = await aiCallsRepo.createAiCall(request.db, {
       runId: request.runId ?? null,
+      userId: request.userId ?? null,
+      requestId: request.requestId ?? null,
       operation: request.operation,
       model: env.OPENAI_MODEL,
       schemaVersion: request.schemaVersion,
-      status: "success",
+      status: "pending",
     });
     aiCallId = aiCall.id;
   }
@@ -97,10 +173,10 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
       controller.abort();
     }
 
-    let response: OpenAI.Responses.Response;
+    let response: Awaited<ReturnType<typeof client.responses.parse>>;
 
     try {
-      response = await client.responses.create(
+      response = await client.responses.parse(
         {
           model: env.OPENAI_MODEL,
           input: request.prompt,
@@ -118,13 +194,45 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
     }
 
     const durationMs = Date.now() - startedAt;
-    const outputText = extractResponseText(response);
-
-    if (!outputText) {
-      throw new Error("OpenAI response did not include structured output text");
+    const refusalOrIncomplete = detectRefusalOrIncomplete(response);
+    if (refusalOrIncomplete) {
+      if (request.db && aiCallId) {
+        await aiCallsRepo.updateAiCallStatus(request.db, aiCallId, {
+          status: refusalOrIncomplete === "refusal" ? "refused" : "error",
+          responseId: response.id ?? null,
+          durationMs,
+          errorMessage: refusalOrIncomplete,
+          errorCategory: refusalOrIncomplete,
+        });
+      }
+      return {
+        status: "error",
+        error: refusalOrIncomplete,
+        durationMs,
+        errorCategory: refusalOrIncomplete,
+      };
     }
 
-    const parsed = request.schema.parse(JSON.parse(outputText));
+    const parsed = response.output_parsed;
+    if (parsed == null) {
+      if (request.db && aiCallId) {
+        await aiCallsRepo.updateAiCallStatus(request.db, aiCallId, {
+          status: "error",
+          responseId: response.id ?? null,
+          durationMs,
+          errorMessage: "malformed",
+          errorCategory: "malformed",
+        });
+      }
+      return {
+        status: "error",
+        error: "OpenAI response did not include structured output",
+        durationMs,
+        errorCategory: "malformed",
+      };
+    }
+
+    const data = request.schema.parse(parsed);
 
     if (request.db && aiCallId) {
       await aiCallsRepo.updateAiCallStatus(request.db, aiCallId, {
@@ -138,36 +246,54 @@ export async function createStructuredResponse<TSchema extends z.ZodTypeAny>(
 
     return {
       status: "success",
-      data: parsed,
+      data,
       responseId: response.id ?? null,
       durationMs,
     };
   } catch (error) {
     const durationMs = Date.now() - startedAt;
-    const message = error instanceof Error ? error.message : "Unknown OpenAI error";
-    const timedOut = error instanceof Error && error.name === "AbortError";
-    const status = timedOut ? "timeout" : "error";
+    const categorized = categorizeProviderError(error);
 
     if (request.db && aiCallId) {
       await aiCallsRepo.updateAiCallStatus(request.db, aiCallId, {
-        status,
+        status: categorized.status === "timeout" ? "timeout" : "error",
         durationMs,
-        errorMessage: message,
+        errorMessage: categorized.errorCategory,
+        errorCategory: categorized.errorCategory,
       });
     }
 
-    if (timedOut) {
+    if (categorized.status === "timeout") {
       return {
         status: "timeout",
-        error: message,
+        error: categorized.message,
         durationMs,
+        errorCategory: "timeout",
+      };
+    }
+    if (categorized.status === "unavailable") {
+      return {
+        status: "unavailable",
+        error: categorized.message,
+        durationMs,
+        errorCategory: categorized.errorCategory as "auth" | "invalid_model" | "disabled",
+      };
+    }
+    if (categorized.status === "service_unavailable") {
+      return {
+        status: "service_unavailable",
+        error: categorized.message,
+        durationMs,
+        errorCategory: categorized.errorCategory as "rate_limit" | "connection" | "provider_5xx",
       };
     }
 
     return {
       status: "error",
-      error: message,
+      error: categorized.message,
       durationMs,
+      errorCategory: categorized.errorCategory as
+        "refusal" | "incomplete" | "malformed" | "unknown",
     };
   }
 }

@@ -101,6 +101,15 @@ export async function explainLead(
     };
   }
 
+  if (result.status !== "success") {
+    return {
+      status: "error",
+      explanation: fallback,
+      source: "fallback",
+      durationMs: "durationMs" in result ? result.durationMs : 0,
+    };
+  }
+
   const explanation = [result.data.summary, ...result.data.highlights].filter(Boolean).join(" ");
 
   return {

@@ -12,18 +12,22 @@ import {
   employments,
   leadCandidates,
   people,
-  personExperienceMetrics,
   searchRuns,
 } from "@/server/infrastructure/db";
-import { findEmploymentOverlaps } from "@/server/domain/search/connection-search";
 import { normalizeDomain } from "@/server/domain/normalization/domain";
 import { deriveTimelineStatus } from "@/server/application/services/persist-person-enrichment";
+import { userOwnsCompany } from "@/server/infrastructure/db/repositories/ownership";
 import {
-  listOwnedPersonIdsForCompany,
-  userOwnsCompany,
-} from "@/server/infrastructure/db/repositories/ownership";
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+  getLatestOwnedPersonEnrichmentRun,
+  listProvenanceEmploymentsForUser,
+} from "@/server/infrastructure/db/repositories/search-provenance";
+import { calculateExperienceMetrics } from "@/server/domain/timeline/experience-calculation";
+import { classifyTitle } from "@/server/domain/roles/classification";
+import { and, asc, desc, eq, gt, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
 
+import { NaturalSearchError } from "./natural-search-error";
+
+export { NaturalSearchError };
 export type StructuredSearchResult = LeadSearchResult;
 
 export type CompiledSearchQuery = {
@@ -31,30 +35,49 @@ export type CompiledSearchQuery = {
   orderBy: SQL[];
 };
 
-export class NaturalSearchError extends Error {
-  constructor(
-    public readonly code:
-      | "AI_UNAVAILABLE"
-      | "SEARCH_NOT_UNDERSTOOD"
-      | "UPSTREAM_TIMEOUT"
-      | "AMBIGUOUS_PERSON"
-      | "VALIDATION_ERROR"
-      | "NOT_FOUND",
-    message: string,
-    public readonly details?: Record<string, unknown>,
-  ) {
-    super(message);
-    this.name = "NaturalSearchError";
+export const MAX_NATURAL_SEARCH_RESULTS = 50;
+
+export function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function requireSearchUserId(userId: string | undefined): string {
+  if (!userId) {
+    throw new NaturalSearchError(
+      "VALIDATION_ERROR",
+      "Authenticated userId is required for natural search",
+    );
   }
+  return userId;
+}
+
+function clampSearchLimit(limit?: number): number {
+  if (limit === undefined || Number.isNaN(limit) || limit <= 0) {
+    return MAX_NATURAL_SEARCH_RESULTS;
+  }
+  return Math.min(Math.floor(limit), MAX_NATURAL_SEARCH_RESULTS);
+}
+
+function ilikeContains(column: SQL | object, rawValue: string): SQL {
+  const pattern = `%${escapeIlikePattern(rawValue.toLowerCase())}%`;
+  return sql`${column} ILIKE ${pattern} ESCAPE '\\'`;
+}
+
+async function withReadOnlySearchTransaction<T>(db: Db, fn: (tx: Db) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SET TRANSACTION READ ONLY`);
+    await tx.execute(sql`SET LOCAL statement_timeout = '5000ms'`);
+    await tx.execute(sql`SET LOCAL lock_timeout = '1000ms'`);
+    return fn(tx as unknown as Db);
+  });
 }
 
 function buildRoleConditions(roles: string[]): SQL | undefined {
-  const patterns = roles.map((role) => `%${role.toLowerCase()}%`);
-  const roleMatches = patterns.map((pattern) =>
+  const roleMatches = roles.map((role) =>
     or(
-      ilike(employments.normalizedRole, pattern),
-      ilike(employments.normalizedTitle, pattern),
-      ilike(employments.seniority, pattern),
+      ilikeContains(employments.normalizedRole, role),
+      ilikeContains(employments.normalizedTitle, role),
+      ilikeContains(employments.seniority, role),
     ),
   );
 
@@ -62,8 +85,7 @@ function buildRoleConditions(roles: string[]): SQL | undefined {
 }
 
 function buildSeniorityConditions(seniority: string[]): SQL | undefined {
-  const patterns = seniority.map((value) => `%${value.toLowerCase()}%`);
-  const matches = patterns.map((pattern) => ilike(employments.seniority, pattern));
+  const matches = seniority.map((value) => ilikeContains(employments.seniority, value));
   return matches.length > 0 ? or(...matches) : undefined;
 }
 
@@ -86,14 +108,15 @@ function buildSortExpressions(intent: LeadsSearchIntent): SQL[] {
 function companyLookupCondition(company: string): SQL {
   const normalized = company.toLowerCase();
   const domain = normalizeDomain(company);
+  const namePattern = `%${escapeIlikePattern(normalized)}%`;
   return or(
-    ilike(companies.normalizedName, `%${normalized}%`),
-    ilike(companies.websiteUrl, `%${normalized}%`),
+    sql`${companies.normalizedName} ILIKE ${namePattern} ESCAPE '\\'`,
+    sql`${companies.websiteUrl} ILIKE ${namePattern} ESCAPE '\\'`,
     domain ? eq(companies.normalizedDomain, domain) : sql`false`,
     sql`exists (
       select 1 from company_aliases ca
       where ca.company_id = ${companies.id}
-        and ca.normalized_value ilike ${`%${normalized}%`}
+        and ca.normalized_value ILIKE ${namePattern} ESCAPE '\\'
     )`,
   )!;
 }
@@ -104,38 +127,48 @@ function companyLookupCondition(company: string): SQL {
  */
 export function compileSearchIntent(
   intent: LeadsSearchIntent,
-  options: { runId?: string; userId?: string } = {},
+  options: { runId?: string; userId: string },
 ): CompiledSearchQuery {
+  const userId = requireSearchUserId(options.userId);
   const conditions: SQL[] = [];
 
   if (options.runId) {
     conditions.push(eq(leadCandidates.runId, options.runId));
   }
 
-  if (options.userId) {
-    conditions.push(
-      sql`exists (
-        select 1 from search_runs
-        where search_runs.id = ${leadCandidates.runId}
-          and search_runs.user_id = ${options.userId}
-      )`,
-    );
-  }
+  conditions.push(
+    sql`exists (
+      select 1 from search_runs
+      where search_runs.id = ${leadCandidates.runId}
+        and search_runs.user_id = ${userId}
+    )`,
+  );
 
   if (intent.scoreThreshold !== undefined) {
-    conditions.push(gte(leadCandidates.finalScore, String(intent.scoreThreshold)));
+    const scoreValue = String(intent.scoreThreshold);
+    const op = intent.scoreOperator ?? "gte";
+    if (op === "gt") conditions.push(gt(leadCandidates.finalScore, scoreValue));
+    else if (op === "lt") conditions.push(lt(leadCandidates.finalScore, scoreValue));
+    else if (op === "lte") conditions.push(lte(leadCandidates.finalScore, scoreValue));
+    else conditions.push(gte(leadCandidates.finalScore, scoreValue));
   }
 
   if (intent.confidenceThreshold !== undefined) {
     conditions.push(gte(leadCandidates.confidence, String(intent.confidenceThreshold)));
   }
 
-  if (intent.company) {
+  if (intent.resolvedCompanyIds?.length) {
+    conditions.push(inArray(leadCandidates.companyId, intent.resolvedCompanyIds));
+  } else if (intent.company) {
     conditions.push(companyLookupCondition(intent.company));
   }
 
-  if (intent.roles?.length) {
-    const roleCondition = buildRoleConditions(intent.roles);
+  const roleTerms = [
+    ...(intent.roles ?? []),
+    ...(intent.roleAliases ?? []),
+  ].filter(Boolean);
+  if (roleTerms.length) {
+    const roleCondition = buildRoleConditions([...new Set(roleTerms.map((r) => r.toLowerCase()))]);
     if (roleCondition) {
       conditions.push(roleCondition);
     }
@@ -160,8 +193,12 @@ export function compileSearchIntent(
     conditions.push(sql`${leadCandidates.updatedAt} <= ${new Date(intent.dateRange.to)}`);
   }
 
+  if (intent.semanticLeadIds?.length) {
+    conditions.push(inArray(leadCandidates.id, intent.semanticLeadIds));
+  }
+
   return {
-    where: conditions.length > 0 ? and(...conditions) : undefined,
+    where: and(...conditions),
     orderBy: buildSortExpressions(intent),
   };
 }
@@ -188,48 +225,51 @@ export function intentHasMeaningfulConstraint(intent: SearchIntent): boolean {
 export async function executeStructuredSearch(
   db: Db,
   intent: LeadsSearchIntent,
-  options: { runId?: string; userId?: string; limit?: number } = {},
+  options: { runId?: string; userId: string; limit?: number },
 ): Promise<LeadSearchResult[]> {
-  const limit = options.limit ?? 50;
+  const userId = requireSearchUserId(options.userId);
+  const limit = clampSearchLimit(options.limit);
   const compiled = compileSearchIntent(intent, {
     runId: options.runId,
-    userId: options.userId,
+    userId,
   });
 
-  const rows = await db
-    .select({
-      leadId: leadCandidates.id,
-      personName: people.name,
-      companyName: companies.name,
-      score: leadCandidates.finalScore,
-      confidence: leadCandidates.confidence,
-    })
-    .from(leadCandidates)
-    .innerJoin(people, eq(people.id, leadCandidates.personId))
-    .innerJoin(companies, eq(companies.id, leadCandidates.companyId))
-    .leftJoin(
-      employments,
-      and(eq(employments.personId, people.id), eq(employments.companyId, companies.id)),
-    )
-    .leftJoin(businessSignals, eq(businessSignals.companyId, companies.id))
-    .where(compiled.where)
-    .groupBy(
-      leadCandidates.id,
-      people.name,
-      companies.name,
-      leadCandidates.finalScore,
-      leadCandidates.confidence,
-    )
-    .orderBy(...compiled.orderBy)
-    .limit(limit);
+  return withReadOnlySearchTransaction(db, async (tx) => {
+    const rows = await tx
+      .select({
+        leadId: leadCandidates.id,
+        personName: people.name,
+        companyName: companies.name,
+        score: leadCandidates.finalScore,
+        confidence: leadCandidates.confidence,
+      })
+      .from(leadCandidates)
+      .innerJoin(people, eq(people.id, leadCandidates.personId))
+      .innerJoin(companies, eq(companies.id, leadCandidates.companyId))
+      .leftJoin(
+        employments,
+        and(eq(employments.personId, people.id), eq(employments.companyId, companies.id)),
+      )
+      .leftJoin(businessSignals, eq(businessSignals.companyId, companies.id))
+      .where(compiled.where)
+      .groupBy(
+        leadCandidates.id,
+        people.name,
+        companies.name,
+        leadCandidates.finalScore,
+        leadCandidates.confidence,
+      )
+      .orderBy(...compiled.orderBy)
+      .limit(limit);
 
-  return rows.map((row) => ({
-    leadId: row.leadId,
-    personName: row.personName,
-    companyName: row.companyName,
-    score: Number(row.score),
-    confidence: Number(row.confidence),
-  }));
+    return rows.map((row) => ({
+      leadId: row.leadId,
+      personName: row.personName,
+      companyName: row.companyName,
+      score: Number(row.score),
+      confidence: Number(row.confidence),
+    }));
+  });
 }
 
 function sortEmploymentRows<T extends { isCurrent: boolean; startDate: string | null }>(
@@ -248,13 +288,15 @@ function sortEmploymentRows<T extends { isCurrent: boolean; startDate: string | 
 async function resolveCompanyIdsByQuery(
   db: Db,
   query: string,
-  options: { runId?: string; userId?: string } = {},
+  options: { runId?: string; userId: string },
 ): Promise<string[]> {
+  const userId = requireSearchUserId(options.userId);
   const normalized = query.toLowerCase();
   const domain = normalizeDomain(query);
+  const namePattern = `%${escapeIlikePattern(normalized)}%`;
   const conditions: SQL[] = [
     or(
-      ilike(companies.normalizedName, `%${normalized}%`),
+      sql`${companies.normalizedName} ILIKE ${namePattern} ESCAPE '\\'`,
       domain ? eq(companies.normalizedDomain, domain) : sql`false`,
     )!,
   ];
@@ -267,16 +309,16 @@ async function resolveCompanyIdsByQuery(
           and lc.run_id = ${options.runId}
       )`,
     );
-  } else if (options.userId) {
-    conditions.push(
-      sql`exists (
-        select 1 from lead_candidates lc
-        inner join search_runs sr on sr.id = lc.run_id
-        where lc.company_id = ${companies.id}
-          and sr.user_id = ${options.userId}
-      )`,
-    );
   }
+
+  conditions.push(
+    sql`exists (
+      select 1 from lead_candidates lc
+      inner join search_runs sr on sr.id = lc.run_id
+      where lc.company_id = ${companies.id}
+        and sr.user_id = ${userId}
+    )`,
+  );
 
   const rows = await db
     .select({ id: companies.id })
@@ -289,207 +331,347 @@ async function resolveCompanyIdsByQuery(
 export async function executeTimelineSearch(
   db: Db,
   intent: TimelineSearchIntent,
-  options: { runId?: string; userId?: string; limit?: number } = {},
+  options: { runId?: string; userId: string; limit?: number },
 ) {
-  const limit = options.limit ?? 20;
-  const conditions: SQL[] = [];
+  const userId = requireSearchUserId(options.userId);
+  const limit = clampSearchLimit(options.limit ?? 20);
 
-  if (intent.personName?.trim()) {
-    conditions.push(ilike(people.normalizedName, `%${intent.personName.trim().toLowerCase()}%`));
-  }
+  return withReadOnlySearchTransaction(db, async (tx) => {
+    const conditions: SQL[] = [];
 
-  if (options.runId) {
-    conditions.push(
-      sql`exists (
-        select 1 from lead_candidates lc
-        where lc.person_id = ${people.id}
-          and lc.run_id = ${options.runId}
-      )`,
-    );
-  } else if (options.userId) {
+    if (intent.personName?.trim()) {
+      conditions.push(ilikeContains(people.normalizedName, intent.personName.trim()));
+    }
+
+    if (options.runId) {
+      conditions.push(
+        sql`exists (
+          select 1 from lead_candidates lc
+          where lc.person_id = ${people.id}
+            and lc.run_id = ${options.runId}
+        )`,
+      );
+    }
+
     conditions.push(
       sql`exists (
         select 1 from lead_candidates lc
         inner join search_runs sr on sr.id = lc.run_id
         where lc.person_id = ${people.id}
-          and sr.user_id = ${options.userId}
+          and sr.user_id = ${userId}
       )`,
     );
-  }
 
-  if (intent.currentCompany?.trim()) {
-    const company = intent.currentCompany.trim().toLowerCase();
-    conditions.push(
-      sql`exists (
-        select 1
-        from ${employments} cur_emp
-        left join ${companies} cur_co on cur_co.id = cur_emp.company_id
-        where cur_emp.person_id = ${people.id}
-          and cur_emp.is_current = true
-          and (
-            cur_co.normalized_name ilike ${`%${company}%`}
-            or coalesce(cur_emp.employer_name, '') ilike ${`%${company}%`}
-            or coalesce(cur_emp.employer_domain, '') ilike ${`%${company}%`}
-          )
-      )`,
-    );
-  }
+    if (intent.currentCompany?.trim()) {
+      const companyPattern = `%${escapeIlikePattern(intent.currentCompany.trim().toLowerCase())}%`;
+      conditions.push(
+        sql`exists (
+          select 1
+          from ${employments} cur_emp
+          left join ${companies} cur_co on cur_co.id = cur_emp.company_id
+          where cur_emp.person_id = ${people.id}
+            and cur_emp.is_current = true
+            and (
+              cur_co.normalized_name ILIKE ${companyPattern} ESCAPE '\\'
+              or coalesce(cur_emp.employer_name, '') ILIKE ${companyPattern} ESCAPE '\\'
+              or coalesce(cur_emp.employer_domain, '') ILIKE ${companyPattern} ESCAPE '\\'
+            )
+        )`,
+      );
+    }
 
-  if (intent.previousCompany?.trim()) {
-    const company = intent.previousCompany.trim().toLowerCase();
-    conditions.push(
-      sql`exists (
-        select 1
-        from ${employments} prev_emp
-        left join ${companies} prev_co on prev_co.id = prev_emp.company_id
-        where prev_emp.person_id = ${people.id}
-          and prev_emp.is_current = false
-          and (
-            prev_co.normalized_name ilike ${`%${company}%`}
-            or coalesce(prev_emp.employer_name, '') ilike ${`%${company}%`}
-            or coalesce(prev_emp.employer_domain, '') ilike ${`%${company}%`}
-          )
-      )`,
-    );
-  }
+    if (intent.previousCompany?.trim()) {
+      const companyPattern = `%${escapeIlikePattern(intent.previousCompany.trim().toLowerCase())}%`;
+      conditions.push(
+        sql`exists (
+          select 1
+          from ${employments} prev_emp
+          left join ${companies} prev_co on prev_co.id = prev_emp.company_id
+          where prev_emp.person_id = ${people.id}
+            and prev_emp.is_current = false
+            and (
+              prev_co.normalized_name ILIKE ${companyPattern} ESCAPE '\\'
+              or coalesce(prev_emp.employer_name, '') ILIKE ${companyPattern} ESCAPE '\\'
+              or coalesce(prev_emp.employer_domain, '') ILIKE ${companyPattern} ESCAPE '\\'
+            )
+        )`,
+      );
+    }
 
-  const personRows = await db
-    .select({
-      personId: people.id,
-      personName: people.name,
-    })
-    .from(people)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .limit(limit + 1);
-
-  if (intent.personName?.trim() && personRows.length > 1) {
-    throw new NaturalSearchError("AMBIGUOUS_PERSON", "Multiple people matched that name", {
-      matches: personRows.slice(0, 5).map((row) => ({
-        personId: row.personId,
-        personName: row.personName,
-      })),
-    });
-  }
-
-  const items = [];
-  for (const person of personRows.slice(0, limit)) {
-    const employmentRows = await db.query.employments.findMany({
-      where: eq(employments.personId, person.personId),
-    });
-    const sorted = sortEmploymentRows(employmentRows);
-    const mapped = await Promise.all(
-      sorted.map(async (employment) => {
-        const company = employment.companyId
-          ? await db.query.companies.findFirst({ where: eq(companies.id, employment.companyId) })
-          : null;
-        return {
-          companyId: employment.companyId,
-          companyName: company?.name ?? employment.employerName ?? "Unknown company",
-          title: employment.rawTitle,
-          startDate: employment.startDate,
-          endDate: employment.endDate,
-          isCurrent: employment.isCurrent,
-          employerDomain: employment.employerDomain ?? null,
-        };
-      }),
-    );
-
-    const [metrics] = await db
-      .select()
-      .from(personExperienceMetrics)
-      .where(eq(personExperienceMetrics.personId, person.personId))
-      .limit(1);
-
-    const [lead] = await db
+    const personRows = await tx
       .select({
-        id: leadCandidates.id,
-        enrichmentStatus: leadCandidates.enrichmentStatus,
+        personId: people.id,
+        personName: people.name,
       })
-      .from(leadCandidates)
-      .innerJoin(searchRuns, eq(leadCandidates.runId, searchRuns.id))
-      .where(
-        and(
-          eq(leadCandidates.personId, person.personId),
-          options.runId ? eq(leadCandidates.runId, options.runId) : undefined,
-          options.userId ? eq(searchRuns.userId, options.userId) : undefined,
-        ),
-      )
-      .limit(1);
+      .from(people)
+      .where(and(...conditions))
+      .orderBy(asc(people.normalizedName), asc(people.id))
+      .limit(limit + 1);
 
-    const calculatedMonths = metrics?.calculatedTotalMonths ?? null;
-    const providerYears = metrics?.providerExperienceYears
-      ? Number(metrics.providerExperienceYears)
-      : null;
+    if (intent.personName?.trim() && personRows.length > 1) {
+      throw new NaturalSearchError("AMBIGUOUS_PERSON", "Multiple people matched that name", {
+        matches: personRows.slice(0, 5).map((row) => ({
+          personId: row.personId,
+          personName: row.personName,
+        })),
+      });
+    }
 
-    items.push({
-      personId: person.personId,
-      personName: person.personName,
-      leadId: lead?.id ?? null,
-      timelineStatus: deriveTimelineStatus({
-        enrichmentStatus: lead?.enrichmentStatus,
-        employmentCount: mapped.length,
-      }),
-      totalExperienceYears: calculatedMonths != null ? calculatedMonths / 12 : providerYears,
-      providerExperienceYears: providerYears,
-      calculatedExperienceMonths: calculatedMonths,
-      employments: mapped,
-    });
-  }
+    const items = [];
+    for (const person of personRows.slice(0, limit)) {
+      const employmentRows = await listProvenanceEmploymentsForUser(tx, {
+        personId: person.personId,
+        userId,
+        runId: options.runId,
+      });
+      const deduped = [...new Map(employmentRows.map((row) => [row.id, row])).values()];
+      const sorted = sortEmploymentRows(deduped);
+      const companyIds = sorted
+        .map((employment) => employment.companyId)
+        .filter((id): id is string => Boolean(id));
+      const companyRows =
+        companyIds.length > 0
+          ? await tx
+              .select({ id: companies.id, name: companies.name })
+              .from(companies)
+              .where(inArray(companies.id, companyIds))
+          : [];
+      const companyNameById = new Map(companyRows.map((row) => [row.id, row.name]));
 
-  return items;
+      const mapped = sorted.map((employment) => ({
+        companyId: employment.companyId,
+        companyName:
+          (employment.companyId ? companyNameById.get(employment.companyId) : undefined) ??
+          employment.employerName ??
+          "Unknown company",
+        title: employment.rawTitle,
+        startDate: employment.startDate,
+        endDate: employment.endDate,
+        isCurrent: employment.isCurrent,
+        employerDomain: employment.employerDomain ?? null,
+      }));
+
+      const enrichmentRun = await getLatestOwnedPersonEnrichmentRun(tx, {
+        personId: person.personId,
+        userId,
+        runId: options.runId,
+      });
+
+      const [lead] = await tx
+        .select({
+          id: leadCandidates.id,
+          enrichmentStatus: leadCandidates.enrichmentStatus,
+        })
+        .from(leadCandidates)
+        .innerJoin(searchRuns, eq(leadCandidates.runId, searchRuns.id))
+        .where(
+          and(
+            eq(leadCandidates.personId, person.personId),
+            options.runId ? eq(leadCandidates.runId, options.runId) : undefined,
+            eq(searchRuns.userId, userId),
+          ),
+        )
+        .orderBy(desc(leadCandidates.updatedAt), desc(leadCandidates.id))
+        .limit(1);
+
+      const calculated = calculateExperienceMetrics(
+        sorted
+          .filter((row) => row.startDate)
+          .map((row) => {
+            const seniorities = row.rawTitle ? classifyTitle(row.rawTitle).seniorities : [];
+            return {
+              startDate: new Date(row.startDate!),
+              endDate: row.isCurrent ? new Date() : row.endDate ? new Date(row.endDate) : null,
+              isLeadership: seniorities.some((token) =>
+                ["founder", "owner", "c_suite", "vp", "head", "director"].includes(token),
+              ),
+            };
+          }),
+      );
+      const calculatedMonths = calculated.calculatedTotalMonths || null;
+      const providerYears = enrichmentRun?.providerExperienceYears
+        ? Number(enrichmentRun.providerExperienceYears)
+        : null;
+
+      items.push({
+        personId: person.personId,
+        personName: person.personName,
+        leadId: lead?.id ?? null,
+        timelineStatus: deriveTimelineStatus({
+          enrichmentStatus: enrichmentRun?.enrichmentStatus ?? lead?.enrichmentStatus,
+          employmentCount: mapped.length,
+        }),
+        totalExperienceYears: calculatedMonths != null ? calculatedMonths / 12 : providerYears,
+        providerExperienceYears: providerYears,
+        calculatedExperienceMonths: calculatedMonths,
+        employments: mapped,
+      });
+    }
+
+    return items;
+  });
 }
 
 export async function executeConnectionsSearch(
   db: Db,
   intent: ConnectionsSearchIntent,
-  options: { runId?: string; userId?: string } = {},
+  options: { runId?: string; userId: string },
 ) {
-  const companyIds = await resolveCompanyIdsByQuery(db, intent.companyA, {
-    runId: options.runId,
-    userId: options.userId,
-  });
-  if (companyIds.length === 0) {
-    return [];
-  }
+  const userId = requireSearchUserId(options.userId);
+  const minOverlapDays = intent.minOverlapDays ?? 30;
 
-  let personId: string | undefined;
-  if (intent.personName?.trim()) {
-    const matches = await db
-      .select({ id: people.id, name: people.name })
-      .from(people)
-      .where(ilike(people.normalizedName, `%${intent.personName.trim().toLowerCase()}%`))
-      .limit(5);
-    if (matches.length > 1) {
-      throw new NaturalSearchError("AMBIGUOUS_PERSON", "Multiple people matched that name", {
-        matches,
-      });
-    }
-    personId = matches[0]?.id;
-  }
-
-  const allResults = [];
-  for (const companyId of companyIds) {
-    if (options.userId && !(await userOwnsCompany(db, companyId, options.userId))) {
-      continue;
-    }
-    const ownedPersonIds = options.userId
-      ? await listOwnedPersonIdsForCompany(db, companyId, options.userId)
-      : undefined;
-    const overlaps = await findEmploymentOverlaps(db, {
-      companyId,
-      personId,
-      minOverlapDays: intent.minOverlapDays ?? 30,
-      ownedPersonIds,
+  return withReadOnlySearchTransaction(db, async (tx) => {
+    const companyIds = await resolveCompanyIdsByQuery(tx, intent.companyA, {
+      runId: options.runId,
+      userId,
     });
-    allResults.push(...overlaps);
-  }
+    if (companyIds.length === 0) {
+      return [];
+    }
 
-  if (intent.companyB?.trim()) {
-    const companyB = intent.companyB.trim().toLowerCase();
-    return allResults.filter((result) => result.company.name.toLowerCase().includes(companyB));
-  }
+    const results: Array<{
+      personA: { id: string; name: string };
+      personB: { id: string; name: string };
+      company: { id: string; name: string };
+      overlapStart: string | null;
+      overlapEnd: string | null;
+      overlapDays: number;
+    }> = [];
 
-  return allResults;
+    for (const companyAId of companyIds) {
+      if (!(await userOwnsCompany(tx, companyAId, userId))) {
+        continue;
+      }
+
+      const anchorPeople = await tx
+        .selectDistinct({
+          personId: leadCandidates.personId,
+          personName: people.name,
+        })
+        .from(leadCandidates)
+        .innerJoin(searchRuns, eq(leadCandidates.runId, searchRuns.id))
+        .innerJoin(people, eq(people.id, leadCandidates.personId))
+        .where(
+          and(
+            eq(leadCandidates.companyId, companyAId),
+            eq(searchRuns.userId, userId),
+            options.runId ? eq(leadCandidates.runId, options.runId) : undefined,
+          ),
+        )
+        .orderBy(asc(people.normalizedName), asc(people.id));
+
+      if (anchorPeople.length === 0) {
+        continue;
+      }
+
+      let anchorIds = anchorPeople.map((person) => person.personId);
+      if (intent.personName?.trim()) {
+        const pattern = `%${escapeIlikePattern(intent.personName.trim().toLowerCase())}%`;
+        const sqlMatches = await tx
+          .select({ id: people.id, name: people.name })
+          .from(people)
+          .where(
+            and(
+              inArray(people.id, anchorIds),
+              sql`${people.normalizedName} ILIKE ${pattern} ESCAPE '\\'`,
+            ),
+          )
+          .orderBy(asc(people.normalizedName), asc(people.id))
+          .limit(5);
+        if (sqlMatches.length > 1) {
+          throw new NaturalSearchError("AMBIGUOUS_PERSON", "Multiple people matched that name", {
+            matches: sqlMatches,
+          });
+        }
+        if (sqlMatches.length === 0) {
+          continue;
+        }
+        anchorIds = [sqlMatches[0]!.id];
+      }
+
+      const companyBPattern = intent.companyB?.trim()
+        ? `%${escapeIlikePattern(intent.companyB.trim().toLowerCase())}%`
+        : null;
+
+      const overlapRows = await tx.execute(sql`
+        SELECT
+          a.person_id AS person_a_id,
+          b.person_id AS person_b_id,
+          pa.name AS person_a_name,
+          pb.name AS person_b_name,
+          a.company_id AS company_id,
+          c.name AS company_name,
+          GREATEST(a.start_date, b.start_date) AS overlap_start,
+          LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE)) AS overlap_end,
+          (
+            LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE))
+            - GREATEST(a.start_date, b.start_date)
+          ) AS overlap_days
+        FROM employments a
+        INNER JOIN employments b
+          ON a.company_id = b.company_id
+         AND a.person_id < b.person_id
+        INNER JOIN people pa ON pa.id = a.person_id
+        INNER JOIN people pb ON pb.id = b.person_id
+        INNER JOIN companies c ON c.id = a.company_id
+        WHERE a.person_id = ANY(${sql`ARRAY[${sql.join(
+          anchorIds.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        )}]`}::uuid[])
+          AND b.person_id = ANY(${sql`ARRAY[${sql.join(
+            anchorIds.map((id) => sql`${id}::uuid`),
+            sql`, `,
+          )}]`}::uuid[])
+          AND a.company_id IS NOT NULL
+          AND a.company_id <> ${companyAId}::uuid
+          AND a.start_date IS NOT NULL
+          AND b.start_date IS NOT NULL
+          AND GREATEST(a.start_date, b.start_date)
+              <= LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE))
+          AND (
+            LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE))
+            - GREATEST(a.start_date, b.start_date)
+          ) >= ${minOverlapDays}
+          ${
+            companyBPattern
+              ? sql`AND (
+                c.normalized_name ILIKE ${companyBPattern} ESCAPE '\\'
+                OR coalesce(c.normalized_domain, '') ILIKE ${companyBPattern} ESCAPE '\\'
+                OR EXISTS (
+                  SELECT 1 FROM company_aliases ca
+                  WHERE ca.company_id = c.id
+                    AND ca.normalized_value ILIKE ${companyBPattern} ESCAPE '\\'
+                )
+              )`
+              : sql``
+          }
+        ORDER BY overlap_days DESC, person_a_id, person_b_id, company_id
+        LIMIT ${MAX_NATURAL_SEARCH_RESULTS}
+      `);
+
+      const rows = Array.isArray(overlapRows)
+        ? overlapRows
+        : ((overlapRows as { rows?: Array<Record<string, unknown>> }).rows ?? []);
+
+      for (const row of rows as Array<Record<string, unknown>>) {
+        results.push({
+          personA: { id: String(row.person_a_id), name: String(row.person_a_name ?? "Unknown") },
+          personB: { id: String(row.person_b_id), name: String(row.person_b_name ?? "Unknown") },
+          company: { id: String(row.company_id), name: String(row.company_name ?? "Unknown") },
+          overlapStart: row.overlap_start ? String(row.overlap_start).slice(0, 10) : null,
+          overlapEnd: row.overlap_end ? String(row.overlap_end).slice(0, 10) : null,
+          overlapDays: Number(row.overlap_days ?? 0),
+        });
+      }
+    }
+
+    const deduped = [
+      ...new Map(
+        results.map((item) => [`${item.personA.id}:${item.personB.id}:${item.company.id}`, item]),
+      ).values(),
+    ];
+    return deduped.slice(0, MAX_NATURAL_SEARCH_RESULTS);
+  });
 }
 
 export function sanitizeSearchIntent(intent: SearchIntent): SearchIntent {
@@ -506,11 +688,23 @@ export function sanitizeSearchIntent(intent: SearchIntent): SearchIntent {
     if (intent.scoreThreshold !== undefined) {
       sanitized.scoreThreshold = Math.min(100, Math.max(0, intent.scoreThreshold));
     }
+    if (intent.scoreOperator) {
+      sanitized.scoreOperator = intent.scoreOperator;
+    }
     if (intent.confidenceThreshold !== undefined) {
       sanitized.confidenceThreshold = Math.min(1, Math.max(0, intent.confidenceThreshold));
     }
     if (intent.company?.trim()) {
       sanitized.company = intent.company.trim();
+    }
+    if (intent.resolvedCompanyIds?.length) {
+      sanitized.resolvedCompanyIds = intent.resolvedCompanyIds;
+    }
+    if (intent.roleAliases?.length) {
+      sanitized.roleAliases = intent.roleAliases;
+    }
+    if (intent.semanticLeadIds?.length) {
+      sanitized.semanticLeadIds = intent.semanticLeadIds;
     }
     if (intent.signalType?.trim()) {
       sanitized.signalType = intent.signalType.trim();
@@ -558,7 +752,8 @@ export function buildSearchIntentSummary(intent: SearchIntent): string {
       parts.push(`company=${intent.company}`);
     }
     if (intent.scoreThreshold !== undefined) {
-      parts.push(`score>=${intent.scoreThreshold}`);
+      const op = intent.scoreOperator ?? "gte";
+      parts.push(`score${op === "gt" ? ">" : op === "lt" ? "<" : op === "lte" ? "<=" : ">="}${intent.scoreThreshold}`);
     }
     if (intent.confidenceThreshold !== undefined) {
       parts.push(`confidence>=${intent.confidenceThreshold}`);

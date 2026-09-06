@@ -29,21 +29,27 @@ export const POST = withRequestGuard(async (request, requestId, clientKey) => {
     }
 
     try {
-      const result = await searchService.naturalSearch(parsed.data, user.id);
+      const result = await searchService.naturalSearch(parsed.data, user.id, requestId);
       return jsonSuccess(result, requestId);
     } catch (error) {
       if (error instanceof NaturalSearchError) {
         const status =
-          error.code === "AI_UNAVAILABLE"
+          error.code === "AI_UNAVAILABLE" || error.code === "SERVICE_UNAVAILABLE"
             ? 503
             : error.code === "UPSTREAM_TIMEOUT"
               ? 504
-              : error.code === "AMBIGUOUS_PERSON"
+              : error.code === "AMBIGUOUS_PERSON" || error.code === "VERSION_CONFLICT"
                 ? 409
                 : error.code === "NOT_FOUND"
                   ? 404
-                  : 422;
-        return jsonError(error.code, error.message, requestId, status, error.details);
+                  : error.code === "SESSION_EXPIRED"
+                    ? 410
+                    : 422;
+        // Never leak raw provider error strings to the browser.
+        const safeDetails = error.details
+          ? { category: error.details.category, forbidden: error.details.forbidden }
+          : undefined;
+        return jsonError(error.code, error.message, requestId, status, safeDetails);
       }
       throw error;
     }

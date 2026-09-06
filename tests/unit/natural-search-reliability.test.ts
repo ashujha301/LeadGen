@@ -34,6 +34,7 @@ describe("natural search reliability", () => {
       status: "timeout",
       error: "aborted",
       durationMs: 10,
+      errorCategory: "timeout",
     });
 
     await expect(
@@ -41,11 +42,25 @@ describe("natural search reliability", () => {
     ).rejects.toMatchObject({ code: "UPSTREAM_TIMEOUT" });
   });
 
+  it("throws SERVICE_UNAVAILABLE on provider rate limits", async () => {
+    parseSearchQueryMock.mockResolvedValue({
+      status: "service_unavailable",
+      error: "rate limited",
+      durationMs: 5,
+      errorCategory: "rate_limit",
+    });
+
+    await expect(
+      runNaturalSearch({ query: "founders at appknox" }, { db: {} as never, userId: "user-1" }),
+    ).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+  });
+
   it("throws SEARCH_NOT_UNDERSTOOD on invalid parser output", async () => {
     parseSearchQueryMock.mockResolvedValue({
       status: "error",
       error: "invalid json",
       durationMs: 5,
+      errorCategory: "malformed",
     });
 
     await expect(

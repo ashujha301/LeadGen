@@ -28,6 +28,7 @@ import {
   type Person,
   type PersonExternalProfile,
 } from "../schema/index";
+import { upsertEmploymentRunProvenance } from "./search-provenance";
 
 export type ObservationContext = {
   observedAt: Date;
@@ -325,6 +326,11 @@ export async function upsertEmploymentWithObservation(
     if (!updated) {
       throw new Error("Failed to update employment");
     }
+    await upsertEmploymentRunProvenance(db, {
+      employmentId: updated.id,
+      runId: context.runId,
+      observedAt: context.observedAt,
+    });
     return updated;
   }
 
@@ -340,6 +346,11 @@ export async function upsertEmploymentWithObservation(
   if (!employment) {
     throw new Error("Failed to create employment");
   }
+  await upsertEmploymentRunProvenance(db, {
+    employmentId: employment.id,
+    runId: context.runId,
+    observedAt: context.observedAt,
+  });
   return employment;
 }
 

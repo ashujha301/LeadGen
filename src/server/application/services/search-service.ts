@@ -1,9 +1,14 @@
 import type {
   NaturalSearchRequest,
-  NaturalSearchResponse,
   OverlapResult,
 } from "@/shared/contracts";
-import { NaturalSearchError, runNaturalSearch } from "@/server/application/search";
+import type {
+  NaturalSearchResolveRequest,
+  NaturalSearchV2Response,
+} from "@/shared/contracts/natural-search-v2";
+import { NaturalSearchError } from "@/server/application/search/natural-search-error";
+import { runNaturalSearchV2 } from "@/server/application/search/natural-search-v2";
+import { resolveNaturalSearchSession } from "@/server/application/search/resolve-session";
 import { findEmploymentOverlaps } from "@/server/domain";
 import {
   getDb,
@@ -14,7 +19,11 @@ import {
 } from "@/server/infrastructure/db";
 
 export const searchService = {
-  async naturalSearch(input: NaturalSearchRequest, userId: string): Promise<NaturalSearchResponse> {
+  async naturalSearch(
+    input: NaturalSearchRequest,
+    userId: string,
+    requestId?: string,
+  ): Promise<NaturalSearchV2Response> {
     const db = getDb();
 
     if (input.runId) {
@@ -24,7 +33,17 @@ export const searchService = {
       }
     }
 
-    return runNaturalSearch(input, { db, userId });
+    return runNaturalSearchV2(input, { db, userId, requestId });
+  },
+
+  async resolveNaturalSearch(
+    sessionId: string,
+    input: NaturalSearchResolveRequest,
+    userId: string,
+    requestId?: string,
+  ): Promise<NaturalSearchV2Response> {
+    const db = getDb();
+    return resolveNaturalSearchSession(sessionId, input, { db, userId, requestId });
   },
 
   async findOverlaps(

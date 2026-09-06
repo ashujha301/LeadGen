@@ -110,6 +110,7 @@ export async function enrichPersons(ctx: StageContext): Promise<StageResult> {
       personId,
       enrichResult: personResult,
       runId: ctx.runId,
+      sourceDocumentId: upsert.document.id,
       fetchedAt,
       inputProfileUrl: inputUrl,
     });

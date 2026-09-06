@@ -5,12 +5,12 @@ import type {
   GraphResponse,
   LeadDetail,
   LeadSummary,
-  NaturalSearchResponse,
   OverlapResult,
   PersonDetail,
   RoleCriteria,
   RunResponse,
 } from "@/shared/contracts";
+import type { NaturalSearchV2Response } from "@/shared/contracts/natural-search-v2";
 
 const API_BASE = "/api";
 
@@ -118,7 +118,23 @@ export const apiClient = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, runId }),
     });
-    return (await parseResponse<NaturalSearchResponse>(res)).data;
+    return (await parseResponse<NaturalSearchV2Response>(res)).data;
+  },
+
+  async resolveNaturalSearch(
+    sessionId: string,
+    body: {
+      version: number;
+      answers?: Array<{ questionId: string; optionIds?: string[]; customAnswer?: string }>;
+      wideningOptionId?: string;
+    },
+  ) {
+    const res = await fetch(`${API_BASE}/v1/search/natural/${sessionId}/resolve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await parseResponse<NaturalSearchV2Response>(res)).data;
   },
 
   async findOverlaps(params: { companyId: string; personId?: string; minOverlapDays?: number }) {

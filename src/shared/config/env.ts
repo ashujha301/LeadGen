@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 /** Placeholder only for Next.js `phase-production-build` page-data collection. */
-export const BUILD_PLACEHOLDER_DATABASE_URL = "postgresql://build:build@127.0.0.1:5432/build";
+export const BUILD_PLACEHOLDER_DATABASE_URL =
+  "postgresql://build:build@127.0.0.1:5432/build";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -19,6 +20,7 @@ const envSchema = z.object({
   }, z.string().min(1)),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-5.4-mini"),
+  OPENAI_EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
   OPENAI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(2000),
   OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().default(45000),
   CRUSTDATA_API_KEY: z.string().optional(),

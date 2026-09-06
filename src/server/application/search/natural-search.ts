@@ -8,14 +8,15 @@ import {
   executeStructuredSearch,
   executeTimelineSearch,
   intentHasMeaningfulConstraint,
-  NaturalSearchError,
   sanitizeSearchIntent,
 } from "./structured-search";
+import { NaturalSearchError } from "./natural-search-error";
 
 export type NaturalSearchOptions = {
   db: Db;
   limit?: number;
   userId: string;
+  requestId?: string;
 };
 
 export async function runNaturalSearch(
@@ -25,6 +26,8 @@ export async function runNaturalSearch(
   const parsed = await parseSearchQuery({
     query: input.query,
     runId: input.runId,
+    userId: options.userId,
+    requestId: options.requestId,
     db: options.db,
   });
 
@@ -36,13 +39,29 @@ export async function runNaturalSearch(
     );
   }
 
+  if (parsed.status === "unavailable") {
+    throw new NaturalSearchError(
+      "AI_UNAVAILABLE",
+      "Natural-language search is temporarily unavailable",
+      { category: parsed.errorCategory },
+    );
+  }
+
   if (parsed.status === "timeout") {
     throw new NaturalSearchError("UPSTREAM_TIMEOUT", "OpenAI timed out while parsing the query");
   }
 
+  if (parsed.status === "service_unavailable") {
+    throw new NaturalSearchError(
+      "SERVICE_UNAVAILABLE",
+      "Search provider is temporarily unavailable",
+      { category: parsed.errorCategory },
+    );
+  }
+
   if (parsed.status === "error") {
     throw new NaturalSearchError("SEARCH_NOT_UNDERSTOOD", "Could not understand the search query", {
-      error: parsed.error,
+      category: parsed.errorCategory,
     });
   }
 

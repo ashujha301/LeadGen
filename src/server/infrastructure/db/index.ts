@@ -7,6 +7,7 @@ export * as sourcesRepo from "./repositories/sources";
 export * as entitiesRepo from "./repositories/entities";
 export * as leadsRepo from "./repositories/leads";
 export * as aiCallsRepo from "./repositories/ai-calls";
+export * as searchProvenanceRepo from "./repositories/search-provenance";
 export * as connectorAttemptsRepo from "./repositories/connector-attempts";
 export * as requestLimitsRepo from "./repositories/request-limits";
 export * as runEventsRepo from "./repositories/run-events";

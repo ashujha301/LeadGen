@@ -56,6 +56,7 @@ export const entityMatchDecisionEnum = pgEnum("entity_match_decision", [
 ]);
 
 export const aiCallStatusEnum = pgEnum("ai_call_status", [
+  "pending",
   "success",
   "error",
   "timeout",
@@ -66,6 +67,7 @@ export const aiOperationEnum = pgEnum("ai_operation", [
   "extract_page",
   "parse_search_query",
   "explain_lead",
+  "embed_search_documents",
 ]);
 
 export const enrichmentStatusEnum = pgEnum("enrichment_status", [

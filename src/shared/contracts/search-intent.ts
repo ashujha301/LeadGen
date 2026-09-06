@@ -41,8 +41,13 @@ export const searchIntentSchema = z.discriminatedUnion("mode", [
   connectionsSearchIntentSchema,
 ]);
 
-export type SearchIntent = z.infer<typeof searchIntentSchema>;
-export type LeadsSearchIntent = z.infer<typeof leadsSearchIntentSchema>;
+export type SearchIntent = LeadsSearchIntent | TimelineSearchIntent | ConnectionsSearchIntent;
+export type LeadsSearchIntent = z.infer<typeof leadsSearchIntentSchema> & {
+  scoreOperator?: "gt" | "gte" | "lt" | "lte";
+  resolvedCompanyIds?: string[];
+  roleAliases?: string[];
+  semanticLeadIds?: string[];
+};
 export type TimelineSearchIntent = z.infer<typeof timelineSearchIntentSchema>;
 export type ConnectionsSearchIntent = z.infer<typeof connectionsSearchIntentSchema>;
 

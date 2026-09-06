@@ -14,6 +14,8 @@ export {
   mergeSearchIntents,
   intentRequiresRunScope,
   buildInArrayCondition,
+  escapeIlikePattern,
+  MAX_NATURAL_SEARCH_RESULTS,
   type CompiledSearchQuery,
   type StructuredSearchResult,
 } from "./structured-search";

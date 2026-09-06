@@ -34,7 +34,8 @@
     "db:repair-garbage-contacts": "tsx --import dotenv/config scripts/repair-garbage-contacts.ts",
     "db:repair-hvl-duplicates": "tsx --import dotenv/config scripts/repair-hvl-duplicate-leads.ts",
     "verify:deployment": "tsx scripts/verify-deployment.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "search:reindex": "tsx --import dotenv/config scripts/search-reindex.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

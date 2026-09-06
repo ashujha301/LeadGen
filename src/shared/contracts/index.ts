@@ -67,6 +67,15 @@ export {
 } from "./search-intent";
 
 export {
+  naturalSearchV2ResponseSchema,
+  naturalSearchResolveRequestSchema,
+  type NaturalSearchV2Response,
+  type NaturalSearchResolveRequest,
+  type ClarificationQuestion,
+  type AppliedFilter,
+} from "./natural-search-v2";
+
+export {
   graphNodeSchema,
   graphEdgeSchema,
   graphResponseSchema,

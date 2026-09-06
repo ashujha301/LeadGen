@@ -19,6 +19,7 @@ import {
   leadCandidates,
   personExperienceMetrics,
 } from "@/server/infrastructure/db";
+import * as searchProvenanceRepo from "@/server/infrastructure/db/repositories/search-provenance";
 
 export type TimelineStatus = "available" | "no_history" | "not_found" | "redacted" | "failed";
 
@@ -27,6 +28,7 @@ export type PersistPersonEnrichmentInput = {
   personId: string;
   enrichResult: CrustdataPersonEnrichResult;
   runId?: string;
+  sourceDocumentId?: string | null;
   fetchedAt?: Date;
   inputProfileUrl?: string | null;
 };
@@ -214,6 +216,18 @@ export async function persistPersonEnrichment(
           enrichmentStatus: enrichResult.status === "invalid" ? "failed" : enrichResult.status,
         })
         .where(and(eq(leadCandidates.personId, personId), eq(leadCandidates.runId, input.runId)));
+
+      await searchProvenanceRepo.upsertPersonEnrichmentRun(db, {
+        personId,
+        runId: input.runId,
+        sourceDocumentId: input.sourceDocumentId ?? null,
+        enrichmentStatus: enrichResult.status === "invalid" ? "failed" : enrichResult.status,
+        providerExperienceYears:
+          enrichResult.providerExperienceYears != null
+            ? String(enrichResult.providerExperienceYears)
+            : null,
+        fetchedAt,
+      });
     }
 
     return {
@@ -280,17 +294,29 @@ export async function persistPersonEnrichment(
       lastConfirmedRunId: input.runId ?? null,
     };
 
+    let employmentId: string;
     if (existing) {
       await entitiesRepo.updateEmployment(db, existing.id, {
         ...payload,
         firstObservedAt: existing.firstObservedAt ?? fetchedAt,
       });
+      employmentId = existing.id;
     } else {
-      await entitiesRepo.createEmployment(db, {
+      const created = await entitiesRepo.createEmployment(db, {
         personId,
         ...payload,
         firstObservedAt: fetchedAt,
         missedRefreshCount: 0,
+      });
+      employmentId = created.id;
+    }
+
+    if (input.runId) {
+      await searchProvenanceRepo.upsertEmploymentRunProvenance(db, {
+        employmentId,
+        runId: input.runId,
+        sourceDocumentId: input.sourceDocumentId,
+        observedAt: fetchedAt,
       });
     }
 
@@ -361,6 +387,18 @@ export async function persistPersonEnrichment(
       .update(leadCandidates)
       .set({ enrichmentStatus: "matched" })
       .where(and(eq(leadCandidates.personId, personId), eq(leadCandidates.runId, input.runId)));
+
+    await searchProvenanceRepo.upsertPersonEnrichmentRun(db, {
+      personId,
+      runId: input.runId,
+      sourceDocumentId: input.sourceDocumentId ?? null,
+      enrichmentStatus: "matched",
+      providerExperienceYears:
+        enrichResult.providerExperienceYears != null
+          ? String(enrichResult.providerExperienceYears)
+          : null,
+      fetchedAt,
+    });
   }
 
   return {

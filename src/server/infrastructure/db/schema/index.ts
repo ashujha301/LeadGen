@@ -21,6 +21,8 @@ export * from "./person-external-profiles";
 export * from "./company-external-profiles";
 export * from "./person-experience-metrics";
 export * from "./merge-audits";
+export * from "./search-provenance";
+export * from "./natural-search";
 
 import { relations } from "drizzle-orm";
 

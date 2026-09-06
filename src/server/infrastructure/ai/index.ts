@@ -16,6 +16,19 @@ export {
 } from "./parse-search-query";
 
 export {
+  parseSearchDraftPlan,
+  type ParseSearchDraftInput,
+} from "./parse-search-draft";
+
+export {
+  embedQueryText,
+  embedDocumentsBatch,
+  hashDocumentContent,
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_BATCH_SIZE,
+} from "./embeddings";
+
+export {
   explainLead,
   buildFallbackExplanation,
   type ExplainLeadInput,
@@ -30,11 +43,21 @@ export {
 
 export {
   searchIntentOutputSchema,
+  searchIntentAiTransportSchema,
+  mapAiTransportToSearchIntent,
   SEARCH_INTENT_SCHEMA_VERSION,
   allowedSearchFields,
   type SearchIntentOutput,
+  type SearchIntentAiTransport,
   type AllowedSearchField,
 } from "./schemas/search-intent";
+
+export {
+  searchDraftAiTransportSchema,
+  SEARCH_DRAFT_SCHEMA_VERSION,
+  allowedSearchDraftFields,
+  type SearchDraftAiTransport,
+} from "./schemas/search-draft";
 
 export {
   leadExplanationSchema,
@@ -44,4 +67,5 @@ export {
 
 export { buildExtractPagePrompt } from "./prompts/extract";
 export { buildParseSearchQueryPrompt } from "./prompts/search";
+export { buildParseSearchDraftPrompt } from "./prompts/search-draft";
 export { buildExplainLeadPrompt } from "./prompts/explain";

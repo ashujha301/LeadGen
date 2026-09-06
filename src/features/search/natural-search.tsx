@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { NaturalSearchResponse } from "@/shared/contracts";
+import { useMemo, useState } from "react";
+import type {
+  ClarificationQuestion,
+  NaturalSearchV2Response,
+} from "@/shared/contracts/natural-search-v2";
 import { Loader2, Search, Sparkles } from "lucide-react";
 import { apiClient, ApiClientError } from "@/shared/utils/api-client";
 import { formatPercent, formatScore } from "@/shared/utils/formatters";
@@ -16,26 +19,25 @@ type NaturalSearchProps = {
   compact?: boolean;
 };
 
-function InterpretationChips({ response }: { response: NaturalSearchResponse }) {
-  const { intent } = response.interpretation;
-  const chips: string[] = [`mode:${intent.mode}`];
+function InterpretationChips({ response }: { response: NaturalSearchV2Response }) {
+  const filters =
+    response.status === "completed" || response.status === "no_results"
+      ? response.interpretation.appliedFilters
+      : response.interpretation?.appliedFilters ?? [];
 
-  if (intent.mode === "leads") {
-    if (intent.roles?.length) chips.push(`roles:${intent.roles.join(",")}`);
-    if (intent.company) chips.push(`company:${intent.company}`);
-    if (intent.scoreThreshold !== undefined) chips.push(`score>=${intent.scoreThreshold}`);
-    if (intent.confidenceThreshold !== undefined) {
-      chips.push(`confidence>=${intent.confidenceThreshold}`);
-    }
-  } else if (intent.mode === "timeline") {
-    if (intent.personName) chips.push(`person:${intent.personName}`);
-    if (intent.previousCompany) chips.push(`previous:${intent.previousCompany}`);
-    if (intent.currentCompany) chips.push(`current:${intent.currentCompany}`);
-  } else {
-    chips.push(`companyA:${intent.companyA}`);
-    if (intent.companyB) chips.push(`companyB:${intent.companyB}`);
-    if (intent.minOverlapDays) chips.push(`overlap>=${intent.minOverlapDays}d`);
+  const chips = filters.map((filter) => {
+    const op = filter.operator ? ` ${filter.operator}` : "";
+    return `${filter.field}${op}: ${filter.label}`;
+  });
+
+  if (response.status === "completed" && response.interpretation.semanticPhrase) {
+    chips.push(`semantic:${response.interpretation.semanticPhrase}`);
   }
+  if (response.status === "completed" && response.interpretation.widened) {
+    chips.push("widened");
+  }
+
+  if (chips.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -48,38 +50,183 @@ function InterpretationChips({ response }: { response: NaturalSearchResponse }) 
   );
 }
 
+function ClarificationForm({
+  questions,
+  disabled,
+  onSubmit,
+}: {
+  questions: ClarificationQuestion[];
+  disabled: boolean;
+  onSubmit: (answers: Array<{ questionId: string; optionIds?: string[]; customAnswer?: string }>) => void;
+}) {
+  const [selected, setSelected] = useState<Record<string, string[]>>({});
+  const [custom, setCustom] = useState<Record<string, string>>({});
+
+  const ready = useMemo(() => {
+    return questions.every((question) => {
+      const hasOption = (selected[question.id] ?? []).length > 0;
+      const hasCustom = Boolean(custom[question.id]?.trim()) && question.allowCustomAnswer;
+      return hasOption || hasCustom;
+    });
+  }, [questions, selected, custom]);
+
+  return (
+    <form
+      className="space-y-3 rounded-md border border-[var(--border)] p-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!ready) return;
+        onSubmit(
+          questions.map((question) => {
+            const customAnswer = custom[question.id]?.trim();
+            if (customAnswer && question.allowCustomAnswer) {
+              return { questionId: question.id, customAnswer };
+            }
+            return { questionId: question.id, optionIds: selected[question.id] ?? [] };
+          }),
+        );
+      }}
+    >
+      <p className="text-sm font-medium">A few clarifications will improve this search</p>
+      {questions.map((question) => (
+        <fieldset key={question.id} className="space-y-2">
+          <legend className="text-sm">{question.prompt}</legend>
+          <div className="space-y-1">
+            {question.options.map((option) => {
+              const checked = (selected[question.id] ?? []).includes(option.id);
+              return (
+                <label key={option.id} className="flex items-start gap-2 text-sm">
+                  <input
+                    type={question.selection === "multi_select" ? "checkbox" : "radio"}
+                    name={question.id}
+                    checked={checked}
+                    onChange={() => {
+                      setSelected((prev) => {
+                        if (question.selection === "multi_select") {
+                          const current = new Set(prev[question.id] ?? []);
+                          if (current.has(option.id)) current.delete(option.id);
+                          else current.add(option.id);
+                          return { ...prev, [question.id]: [...current] };
+                        }
+                        return { ...prev, [question.id]: [option.id] };
+                      });
+                      setCustom((prev) => ({ ...prev, [question.id]: "" }));
+                    }}
+                  />
+                  <span>
+                    <span className="font-medium">{option.label}</span>
+                    {option.description ? (
+                      <span className="block text-xs text-muted">{option.description}</span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {question.allowCustomAnswer ? (
+            <Input
+              placeholder="Or type a custom answer"
+              value={custom[question.id] ?? ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                setCustom((prev) => ({ ...prev, [question.id]: value }));
+                if (value.trim()) {
+                  setSelected((prev) => ({ ...prev, [question.id]: [] }));
+                }
+              }}
+            />
+          ) : null}
+        </fieldset>
+      ))}
+      <Button type="submit" disabled={disabled || !ready} variant="outline">
+        Continue search
+      </Button>
+    </form>
+  );
+}
+
 export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<NaturalSearchResponse | null>(null);
+  const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
+  const [results, setResults] = useState<NaturalSearchV2Response | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-
+  async function runSearch(nextQuery: string) {
     setLoading(true);
     setError(null);
-
+    setErrorRequestId(null);
     try {
-      const response = await apiClient.naturalSearch(query.trim(), runId);
+      const response = await apiClient.naturalSearch(nextQuery, runId);
       setResults(response);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Search failed");
+      setErrorRequestId(err instanceof ApiClientError ? err.requestId : null);
       setResults(null);
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim()) return;
+    await runSearch(query.trim());
+  }
+
+  async function handleClarify(
+    answers: Array<{ questionId: string; optionIds?: string[]; customAnswer?: string }>,
+  ) {
+    if (!results || results.status !== "needs_clarification") return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.resolveNaturalSearch(results.sessionId, {
+        version: results.version,
+        answers,
+      });
+      setResults(response);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Clarification failed");
+      setErrorRequestId(err instanceof ApiClientError ? err.requestId : null);
+      if (err instanceof ApiClientError && err.code === "SESSION_EXPIRED") {
+        setResults(null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleWiden(optionId: string) {
+    if (!results || results.status !== "no_results" || !results.sessionId || !results.version) {
+      setError("Widening session is unavailable. Please re-run the search.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiClient.resolveNaturalSearch(results.sessionId, {
+        version: results.version,
+        answers: [],
+        wideningOptionId: optionId,
+      });
+      setResults(response);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Widening failed");
+      setErrorRequestId(err instanceof ApiClientError ? err.requestId : null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const itemCount =
-    results?.result.kind === "leads"
-      ? results.result.items.length
-      : results?.result.kind === "timelines"
+    results?.status === "completed"
+      ? results.result.kind === "leads"
         ? results.result.items.length
-        : results?.result.kind === "connections"
+        : results.result.kind === "timelines"
           ? results.result.items.length
-          : 0;
+          : results.result.items.length
+      : 0;
 
   return (
     <div
@@ -109,16 +256,54 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
 
       {error && (
         <Alert variant="destructive" title="Search failed">
-          {error}
+          <p>{error}</p>
+          {errorRequestId ? (
+            <p className="mt-1 text-xs opacity-80">Request ID: {errorRequestId}</p>
+          ) : null}
         </Alert>
       )}
 
-      {results && (
+      {results?.status === "needs_clarification" && (
+        <div className="space-y-2">
+          <InterpretationChips response={results} />
+          <p className="text-xs text-muted">
+            Session expires {new Date(results.expiresAt).toLocaleTimeString()}
+          </p>
+          <ClarificationForm questions={results.questions} disabled={loading} onSubmit={handleClarify} />
+        </div>
+      )}
+
+      {results?.status === "no_results" && (
+        <div className="space-y-2">
+          <InterpretationChips response={results} />
+          <p className="text-sm text-muted">No results matched. Choose a widening option to continue:</p>
+          <ul className="space-y-2">
+            {results.wideningOptions.map((option) => (
+              <li key={option.id}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || option.executed}
+                  onClick={() => void handleWiden(option.id)}
+                >
+                  {option.label}
+                  {option.estimatedCount !== undefined ? ` (~${option.estimatedCount})` : ""}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {results?.status === "completed" && (
         <div className="space-y-2">
           <InterpretationChips response={results} />
           <p className="text-xs text-muted">
             {itemCount} result{itemCount === 1 ? "" : "s"} · {results.interpretation.summary}
           </p>
+          {results.interpretation.warnings.length > 0 ? (
+            <p className="text-xs text-muted">Warnings: {results.interpretation.warnings.join(", ")}</p>
+          ) : null}
 
           {results.result.kind === "leads" &&
             (results.result.items.length === 0 ? (

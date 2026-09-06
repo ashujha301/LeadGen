@@ -51,15 +51,6 @@ Supported result modes:
 - **Timelines** - person name, current company, previous company, total experience, and employment history.
 - **Connections** - shared employer, person, company pair, and minimum overlap duration.
 
-Example queries:
-
-```text
-Chief Technology Officers at OutcomesAI with score above 55
-Show Siddalingamurthy BG's employment timeline from OutcomesAI
-Show high-value founders who previously worked at Groww
-Find connections between leaders at Ringg AI and Credit Dharma
-```
-
 If a person, company, role, or relationship is ambiguous, the API returns `needs_clarification` with selectable answers and an optional custom answer. A successful search returns `completed`. A valid search with no matches returns `no_results` with explicit widening options that are never applied without user approval.
 
 ## Potential Connections

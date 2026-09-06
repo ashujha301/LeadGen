@@ -1,7 +1,4 @@
-import type {
-  NaturalSearchRequest,
-  OverlapResult,
-} from "@/shared/contracts";
+import type { NaturalSearchRequest, OverlapResult } from "@/shared/contracts";
 import type {
   NaturalSearchResolveRequest,
   NaturalSearchV2Response,

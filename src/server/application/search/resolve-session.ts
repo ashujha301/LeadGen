@@ -1,16 +1,13 @@
 import { and, eq, sql } from "drizzle-orm";
 
-import type { NaturalSearchResolveRequest, NaturalSearchV2Response } from "@/shared/contracts/natural-search-v2";
+import type {
+  NaturalSearchResolveRequest,
+  NaturalSearchV2Response,
+} from "@/shared/contracts/natural-search-v2";
 import type { Db } from "@/server/infrastructure/db";
 import { naturalSearchSessions } from "@/server/infrastructure/db/schema";
-import {
-  buildCanonicalPlanFromDraft,
-  type CanonicalSearchPlan,
-} from "./canonical-plan";
-import {
-  MAX_CLARIFICATION_ROUNDS,
-  SESSION_TTL_MS,
-} from "./clarification/session";
+import { buildCanonicalPlanFromDraft, type CanonicalSearchPlan } from "./canonical-plan";
+import { MAX_CLARIFICATION_ROUNDS, SESSION_TTL_MS } from "./clarification/session";
 import { NaturalSearchError } from "./natural-search-error";
 import { resolveAndExecuteNaturalSearch } from "./resolve-and-execute";
 
@@ -103,7 +100,9 @@ function applyAnswersToPlan(
       const companyConstraint = nextConstraints.find((c) => c.field === "company");
       const companyValue = companyConstraint?.rawValue;
       // Remove ambiguous company field and map to current/previous
-      const filtered = nextConstraints.filter((c) => c.field !== "company" && c.field !== "relationship");
+      const filtered = nextConstraints.filter(
+        (c) => c.field !== "company" && c.field !== "relationship",
+      );
       if (selectedId === "rel-current" && typeof companyValue === "string") {
         filtered.push({
           field: "currentCompany",

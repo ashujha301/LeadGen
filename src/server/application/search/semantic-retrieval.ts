@@ -65,9 +65,9 @@ export async function retrieveSemanticLeadIds(
       limit ${limit}
     `);
 
-    const rows = (Array.isArray(result)
-      ? result
-      : ((result as { rows?: unknown[] }).rows ?? [])) as Array<{
+    const rows = (
+      Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+    ) as Array<{
       lead_id: string | null;
     }>;
 

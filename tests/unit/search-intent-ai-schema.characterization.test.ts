@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { zodTextFormat } from "openai/helpers/zod";
 
-import { searchDraftAiTransportSchema, SEARCH_DRAFT_SCHEMA_VERSION } from "@/server/infrastructure/ai/schemas/search-draft";
+import {
+  searchDraftAiTransportSchema,
+  SEARCH_DRAFT_SCHEMA_VERSION,
+} from "@/server/infrastructure/ai/schemas/search-draft";
 import { searchIntentOutputSchema } from "@/server/infrastructure/ai/schemas/search-intent";
 
 function isNullableProperty(prop: Record<string, unknown>): boolean {

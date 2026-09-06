@@ -163,10 +163,7 @@ export function compileSearchIntent(
     conditions.push(companyLookupCondition(intent.company));
   }
 
-  const roleTerms = [
-    ...(intent.roles ?? []),
-    ...(intent.roleAliases ?? []),
-  ].filter(Boolean);
+  const roleTerms = [...(intent.roles ?? []), ...(intent.roleAliases ?? [])].filter(Boolean);
   if (roleTerms.length) {
     const roleCondition = buildRoleConditions([...new Set(roleTerms.map((r) => r.toLowerCase()))]);
     if (roleCondition) {
@@ -753,7 +750,9 @@ export function buildSearchIntentSummary(intent: SearchIntent): string {
     }
     if (intent.scoreThreshold !== undefined) {
       const op = intent.scoreOperator ?? "gte";
-      parts.push(`score${op === "gt" ? ">" : op === "lt" ? "<" : op === "lte" ? "<=" : ">="}${intent.scoreThreshold}`);
+      parts.push(
+        `score${op === "gt" ? ">" : op === "lt" ? "<" : op === "lte" ? "<=" : ">="}${intent.scoreThreshold}`,
+      );
     }
     if (intent.confidenceThreshold !== undefined) {
       parts.push(`confidence>=${intent.confidenceThreshold}`);

@@ -120,9 +120,7 @@ export async function embedDocumentsBatch(input: {
       input: input.texts,
       dimensions: EMBEDDING_DIMENSIONS,
     });
-    const embeddings = response.data
-      .sort((a, b) => a.index - b.index)
-      .map((row) => row.embedding);
+    const embeddings = response.data.sort((a, b) => a.index - b.index).map((row) => row.embedding);
     return {
       status: "success",
       embedding: embeddings[0] ?? [],

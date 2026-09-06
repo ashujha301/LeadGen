@@ -1,8 +1,7 @@
 import { z } from "zod";
 
 /** Placeholder only for Next.js `phase-production-build` page-data collection. */
-export const BUILD_PLACEHOLDER_DATABASE_URL =
-  "postgresql://build:build@127.0.0.1:5432/build";
+export const BUILD_PLACEHOLDER_DATABASE_URL = "postgresql://build:build@127.0.0.1:5432/build";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),

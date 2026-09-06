@@ -22,7 +22,10 @@ const AUTO_RESOLVE_LEAD = 0.1;
 const CLARIFY_SIMILARITY = 0.55;
 
 function normalizeName(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 /**

@@ -14,10 +14,7 @@ import {
   type CanonicalSearchPlan,
   type DraftSearchPlan,
 } from "./canonical-plan";
-import {
-  buildClarificationResponse,
-  SESSION_TTL_MS,
-} from "./clarification/session";
+import { buildClarificationResponse, SESSION_TTL_MS } from "./clarification/session";
 import { NaturalSearchError } from "./natural-search-error";
 import { planClarifications } from "./resolution/clarifications";
 import { resolveCompanyConstraint } from "./resolution/resolve-company";
@@ -172,7 +169,13 @@ export async function resolveAndExecuteNaturalSearch(
   }
 
   // Company fields
-  for (const field of ["company", "companyA", "companyB", "currentCompany", "previousCompany"] as const) {
+  for (const field of [
+    "company",
+    "companyA",
+    "companyB",
+    "currentCompany",
+    "previousCompany",
+  ] as const) {
     const raw = constraintValue(plan, field);
     if (typeof raw !== "string") continue;
     const companyResult = await resolveCompanyConstraint(context.db, raw, context.userId);
@@ -283,8 +286,7 @@ export async function resolveAndExecuteNaturalSearch(
   // Semantic retrieval when needed
   let semanticLeadIds: string[] | undefined;
   const needsSemantic =
-    Boolean(semanticText) ||
-    workingPlan.constraints.some((c) => c.operator === "semantic_match");
+    Boolean(semanticText) || workingPlan.constraints.some((c) => c.operator === "semantic_match");
 
   if (needsSemantic) {
     const semantic = await retrieveSemanticLeadIds(context.db, {
@@ -296,7 +298,11 @@ export async function resolveAndExecuteNaturalSearch(
     if (semantic.status === "empty_index") {
       warnings.push("semantic_index_empty");
     } else if (semantic.status === "failed") {
-      if (!workingPlan.constraints.some((c) => c.field === "company" || c.field === "role" || c.field === "score")) {
+      if (
+        !workingPlan.constraints.some(
+          (c) => c.field === "company" || c.field === "role" || c.field === "score",
+        )
+      ) {
         throw new NaturalSearchError(
           "SERVICE_UNAVAILABLE",
           "Semantic search is temporarily unavailable",
@@ -318,7 +324,8 @@ export async function resolveAndExecuteNaturalSearch(
           ? (constraintValue(plan, "company") as string)
           : undefined,
       scoreThreshold: typeof scoreRaw === "number" ? scoreRaw : undefined,
-      scoreOperator: typeof scoreRaw === "number" ? (scoreOp as "gt" | "gte" | "lt" | "lte") : undefined,
+      scoreOperator:
+        typeof scoreRaw === "number" ? (scoreOp as "gt" | "gte" | "lt" | "lte") : undefined,
       confidenceThreshold:
         typeof constraintValue(plan, "confidence") === "number"
           ? (constraintValue(plan, "confidence") as number)

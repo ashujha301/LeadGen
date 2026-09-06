@@ -6,10 +6,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
 
 export type AiOperation =
-  | "extract_page"
-  | "parse_search_query"
-  | "explain_lead"
-  | "embed_search_documents";
+  "extract_page" | "parse_search_query" | "explain_lead" | "embed_search_documents";
 
 export type StructuredAiRequest<TSchema extends z.ZodTypeAny> = {
   operation: AiOperation;

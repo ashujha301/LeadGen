@@ -9,9 +9,7 @@ import type { CanonicalSearchPlan } from "@/server/application/search/canonical-
 
 describe("NL resolution semantic contracts (phase 1)", () => {
   it("returns Siddalingamurthy for CTO at Outcomes.ai with score above 55", async () => {
-    const { runNaturalSearchV2 } = await import(
-      "@/server/application/search/natural-search-v2"
-    );
+    const { runNaturalSearchV2 } = await import("@/server/application/search/natural-search-v2");
 
     const result = await runNaturalSearchV2(
       { query: "Chief Technology Officer at Outcomes.ai with score above 55" },
@@ -22,8 +20,18 @@ describe("NL resolution semantic contracts (phase 1)", () => {
           parseDraft: async () => ({
             mode: "leads" as const,
             constraints: [
-              { field: "role", operator: "eq" as const, rawValue: "Chief Technology Officer", source: "user" as const },
-              { field: "company", operator: "eq" as const, rawValue: "Outcomes.ai", source: "user" as const },
+              {
+                field: "role",
+                operator: "eq" as const,
+                rawValue: "Chief Technology Officer",
+                source: "user" as const,
+              },
+              {
+                field: "company",
+                operator: "eq" as const,
+                rawValue: "Outcomes.ai",
+                source: "user" as const,
+              },
               { field: "score", operator: "gt" as const, rawValue: 55, source: "user" as const },
             ],
             semanticText: null,
@@ -32,12 +40,19 @@ describe("NL resolution semantic contracts (phase 1)", () => {
             relationshipAmbiguous: false,
             limit: 50,
           }),
-          resolveAndExecute: async (plan: CanonicalSearchPlan): Promise<NaturalSearchV2Response> => ({
+          resolveAndExecute: async (
+            plan: CanonicalSearchPlan,
+          ): Promise<NaturalSearchV2Response> => ({
             status: "completed",
             interpretation: {
               summary: "CTO at Outcomes.ai score>55",
               appliedFilters: [
-                { field: "role", label: "Chief Technology Officer", operator: "eq", rawValue: "Chief Technology Officer" },
+                {
+                  field: "role",
+                  label: "Chief Technology Officer",
+                  operator: "eq",
+                  rawValue: "Chief Technology Officer",
+                },
                 { field: "company", label: "OutcomesAI", operator: "eq", rawValue: "Outcomes.ai" },
                 { field: "score", label: "score > 55", operator: "gt", rawValue: 55 },
               ],
@@ -74,7 +89,10 @@ describe("NL resolution semantic contracts (phase 1)", () => {
     expect(hit?.score).toBe(70.78);
     expect(result.interpretation.appliedFilters).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ field: "role", label: expect.stringMatching(/chief technology/i) }),
+        expect.objectContaining({
+          field: "role",
+          label: expect.stringMatching(/chief technology/i),
+        }),
         expect.objectContaining({ field: "company", label: expect.stringMatching(/outcomes/i) }),
         expect.objectContaining({ field: "score", operator: "gt", rawValue: 55 }),
       ]),
@@ -82,9 +100,8 @@ describe("NL resolution semantic contracts (phase 1)", () => {
   });
 
   it("resolves CTO abbreviation to Chief Technology Officer", async () => {
-    const { resolveRoleConstraint } = await import(
-      "@/server/application/search/resolution/resolve-role"
-    );
+    const { resolveRoleConstraint } =
+      await import("@/server/application/search/resolution/resolve-role");
 
     const resolved = resolveRoleConstraint("CTO");
     expect(resolved.status).toBe("resolved");
@@ -94,9 +111,8 @@ describe("NL resolution semantic contracts (phase 1)", () => {
   });
 
   it("maps above to gt and at least to gte", async () => {
-    const { inferComparisonOperator } = await import(
-      "@/server/application/search/resolution/operators"
-    );
+    const { inferComparisonOperator } =
+      await import("@/server/application/search/resolution/operators");
 
     expect(inferComparisonOperator("above 55")).toBe("gt");
     expect(inferComparisonOperator("score above 55")).toBe("gt");
@@ -105,9 +121,8 @@ describe("NL resolution semantic contracts (phase 1)", () => {
   });
 
   it("does not invent signalType/seniority/dates absent from user text", async () => {
-    const { mapDraftConstraintsFromTransport } = await import(
-      "@/server/application/search/canonical-plan"
-    );
+    const { mapDraftConstraintsFromTransport } =
+      await import("@/server/application/search/canonical-plan");
 
     const draft = mapDraftConstraintsFromTransport({
       mode: "leads",
@@ -128,9 +143,8 @@ describe("NL resolution semantic contracts (phase 1)", () => {
   });
 
   it("asks a relationship clarification for ambiguous timeline from company", async () => {
-    const { planClarifications } = await import(
-      "@/server/application/search/resolution/clarifications"
-    );
+    const { planClarifications } =
+      await import("@/server/application/search/resolution/clarifications");
 
     const questions = planClarifications({
       mode: "timeline",
@@ -145,9 +159,8 @@ describe("NL resolution semantic contracts (phase 1)", () => {
   });
 
   it("returns needs_clarification for similar company candidates instead of zero results", async () => {
-    const { buildClarificationResponse } = await import(
-      "@/server/application/search/clarification/session"
-    );
+    const { buildClarificationResponse } =
+      await import("@/server/application/search/clarification/session");
 
     const response = buildClarificationResponse({
       sessionId: "11111111-1111-1111-1111-111111111111",
@@ -173,9 +186,7 @@ describe("NL resolution semantic contracts (phase 1)", () => {
   });
 
   it("returns no_results with unexecuted widening options", async () => {
-    const { buildNoResultsResponse } = await import(
-      "@/server/application/search/widening/options"
-    );
+    const { buildNoResultsResponse } = await import("@/server/application/search/widening/options");
 
     const response = buildNoResultsResponse({
       interpretationSummary: "CTO at Outcomes.ai score>90",

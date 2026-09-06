@@ -11,10 +11,18 @@ export function inferComparisonOperator(text: string): "gt" | "gte" | "lt" | "lt
   if (/\bat\s+most\b/.test(normalized) || /\bno\s+more\s+than\b/.test(normalized)) {
     return "lte";
   }
-  if (/\babove\b/.test(normalized) || /\bgreater\s+than\b/.test(normalized) || /\bover\b/.test(normalized)) {
+  if (
+    /\babove\b/.test(normalized) ||
+    /\bgreater\s+than\b/.test(normalized) ||
+    /\bover\b/.test(normalized)
+  ) {
     return "gt";
   }
-  if (/\bbelow\b/.test(normalized) || /\bless\s+than\b/.test(normalized) || /\bunder\b/.test(normalized)) {
+  if (
+    /\bbelow\b/.test(normalized) ||
+    /\bless\s+than\b/.test(normalized) ||
+    /\bunder\b/.test(normalized)
+  ) {
     return "lt";
   }
   if (/\bbefore\b/.test(normalized)) {

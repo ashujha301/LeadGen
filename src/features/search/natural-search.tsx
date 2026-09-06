@@ -23,7 +23,7 @@ function InterpretationChips({ response }: { response: NaturalSearchV2Response }
   const filters =
     response.status === "completed" || response.status === "no_results"
       ? response.interpretation.appliedFilters
-      : response.interpretation?.appliedFilters ?? [];
+      : (response.interpretation?.appliedFilters ?? []);
 
   const chips = filters.map((filter) => {
     const op = filter.operator ? ` ${filter.operator}` : "";
@@ -57,7 +57,9 @@ function ClarificationForm({
 }: {
   questions: ClarificationQuestion[];
   disabled: boolean;
-  onSubmit: (answers: Array<{ questionId: string; optionIds?: string[]; customAnswer?: string }>) => void;
+  onSubmit: (
+    answers: Array<{ questionId: string; optionIds?: string[]; customAnswer?: string }>,
+  ) => void;
 }) {
   const [selected, setSelected] = useState<Record<string, string[]>>({});
   const [custom, setCustom] = useState<Record<string, string>>({});
@@ -269,14 +271,20 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
           <p className="text-xs text-muted">
             Session expires {new Date(results.expiresAt).toLocaleTimeString()}
           </p>
-          <ClarificationForm questions={results.questions} disabled={loading} onSubmit={handleClarify} />
+          <ClarificationForm
+            questions={results.questions}
+            disabled={loading}
+            onSubmit={handleClarify}
+          />
         </div>
       )}
 
       {results?.status === "no_results" && (
         <div className="space-y-2">
           <InterpretationChips response={results} />
-          <p className="text-sm text-muted">No results matched. Choose a widening option to continue:</p>
+          <p className="text-sm text-muted">
+            No results matched. Choose a widening option to continue:
+          </p>
           <ul className="space-y-2">
             {results.wideningOptions.map((option) => (
               <li key={option.id}>
@@ -302,7 +310,9 @@ export function NaturalSearch({ runId, compact }: NaturalSearchProps) {
             {itemCount} result{itemCount === 1 ? "" : "s"} · {results.interpretation.summary}
           </p>
           {results.interpretation.warnings.length > 0 ? (
-            <p className="text-xs text-muted">Warnings: {results.interpretation.warnings.join(", ")}</p>
+            <p className="text-xs text-muted">
+              Warnings: {results.interpretation.warnings.join(", ")}
+            </p>
           ) : null}
 
           {results.result.kind === "leads" &&

@@ -53,6 +53,7 @@ export const personEnrichmentRuns = pgTable(
     }),
     enrichmentStatus: enrichmentStatusEnum("enrichment_status").notNull(),
     providerExperienceYears: numeric("provider_experience_years", { precision: 6, scale: 2 }),
+    providerMatchConfidence: numeric("provider_match_confidence", { precision: 4, scale: 3 }),
     fetchedAt: timestamp("fetched_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
     ...timestamps,
   },

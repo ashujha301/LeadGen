@@ -105,6 +105,7 @@ export function mapPersonDataToEnrichResult(
   data: CrustdataPersonData,
   status: "matched" | "not_found" | "redacted",
   matchedOn?: string | null,
+  matchConfidence: number | null = null,
 ): CrustdataPersonEnrichResult {
   const current = data.experience?.employment_details?.current ?? [];
   const past = data.experience?.employment_details?.past ?? [];
@@ -120,6 +121,7 @@ export function mapPersonDataToEnrichResult(
     matchedOn: matchedOn ?? null,
     providerExperienceYears: data.experience?.years_of_experience_raw ?? null,
     providerUpdatedAt: data.updated_at ?? null,
+    matchConfidence,
     experience: [...mapEmploymentDetails(current, true), ...mapEmploymentDetails(past, false)],
     education: (data.education?.schools ?? []).map((school) => ({
       school: school.school,

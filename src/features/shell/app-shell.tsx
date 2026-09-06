@@ -11,8 +11,8 @@ import { APP_NAME } from "@/shared/config";
 const NAV_ITEMS = [
   { href: "/", label: "Search", icon: Home },
   { href: "/high-value-leads", label: "High Value Leads", icon: Star },
-  { href: "/connections", label: "Connections", icon: Link2 },
-  { href: "/review", label: "Review", icon: ShieldCheck },
+  { href: "/connections", label: "Potential Connections", icon: Link2 },
+  // { href: "/review", label: "Review", icon: ShieldCheck },
 ];
 
 export function AppShell({ children, user }: { children: React.ReactNode; user: SessionUser }) {

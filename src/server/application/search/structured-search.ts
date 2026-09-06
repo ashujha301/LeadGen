@@ -26,6 +26,7 @@ import { classifyTitle } from "@/server/domain/roles/classification";
 import { and, asc, desc, eq, gt, gte, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
 
 import { NaturalSearchError } from "./natural-search-error";
+import { potentialConnectionsService } from "@/server/application/services/potential-connections-service";
 
 export { NaturalSearchError };
 export type StructuredSearchResult = LeadSearchResult;
@@ -517,158 +518,110 @@ export async function executeConnectionsSearch(
   const userId = requireSearchUserId(options.userId);
   const minOverlapDays = intent.minOverlapDays ?? 30;
 
-  return withReadOnlySearchTransaction(db, async (tx) => {
-    const companyIds = await resolveCompanyIdsByQuery(tx, intent.companyA, {
-      runId: options.runId,
-      userId,
-    });
-    if (companyIds.length === 0) {
-      return [];
-    }
-
-    const results: Array<{
-      personA: { id: string; name: string };
-      personB: { id: string; name: string };
-      company: { id: string; name: string };
-      overlapStart: string | null;
-      overlapEnd: string | null;
-      overlapDays: number;
-    }> = [];
-
-    for (const companyAId of companyIds) {
-      if (!(await userOwnsCompany(tx, companyAId, userId))) {
-        continue;
-      }
-
-      const anchorPeople = await tx
-        .selectDistinct({
-          personId: leadCandidates.personId,
-          personName: people.name,
-        })
-        .from(leadCandidates)
-        .innerJoin(searchRuns, eq(leadCandidates.runId, searchRuns.id))
-        .innerJoin(people, eq(people.id, leadCandidates.personId))
-        .where(
-          and(
-            eq(leadCandidates.companyId, companyAId),
-            eq(searchRuns.userId, userId),
-            options.runId ? eq(leadCandidates.runId, options.runId) : undefined,
-          ),
-        )
-        .orderBy(asc(people.normalizedName), asc(people.id));
-
-      if (anchorPeople.length === 0) {
-        continue;
-      }
-
-      let anchorIds = anchorPeople.map((person) => person.personId);
-      if (intent.personName?.trim()) {
-        const pattern = `%${escapeIlikePattern(intent.personName.trim().toLowerCase())}%`;
-        const sqlMatches = await tx
-          .select({ id: people.id, name: people.name })
-          .from(people)
-          .where(
-            and(
-              inArray(people.id, anchorIds),
-              sql`${people.normalizedName} ILIKE ${pattern} ESCAPE '\\'`,
-            ),
-          )
-          .orderBy(asc(people.normalizedName), asc(people.id))
-          .limit(5);
-        if (sqlMatches.length > 1) {
-          throw new NaturalSearchError("AMBIGUOUS_PERSON", "Multiple people matched that name", {
-            matches: sqlMatches,
-          });
-        }
-        if (sqlMatches.length === 0) {
-          continue;
-        }
-        anchorIds = [sqlMatches[0]!.id];
-      }
-
-      const companyBPattern = intent.companyB?.trim()
-        ? `%${escapeIlikePattern(intent.companyB.trim().toLowerCase())}%`
-        : null;
-
-      const overlapRows = await tx.execute(sql`
-        SELECT
-          a.person_id AS person_a_id,
-          b.person_id AS person_b_id,
-          pa.name AS person_a_name,
-          pb.name AS person_b_name,
-          a.company_id AS company_id,
-          c.name AS company_name,
-          GREATEST(a.start_date, b.start_date) AS overlap_start,
-          LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE)) AS overlap_end,
-          (
-            LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE))
-            - GREATEST(a.start_date, b.start_date)
-          ) AS overlap_days
-        FROM employments a
-        INNER JOIN employments b
-          ON a.company_id = b.company_id
-         AND a.person_id < b.person_id
-        INNER JOIN people pa ON pa.id = a.person_id
-        INNER JOIN people pb ON pb.id = b.person_id
-        INNER JOIN companies c ON c.id = a.company_id
-        WHERE a.person_id = ANY(${sql`ARRAY[${sql.join(
-          anchorIds.map((id) => sql`${id}::uuid`),
-          sql`, `,
-        )}]`}::uuid[])
-          AND b.person_id = ANY(${sql`ARRAY[${sql.join(
-            anchorIds.map((id) => sql`${id}::uuid`),
-            sql`, `,
-          )}]`}::uuid[])
-          AND a.company_id IS NOT NULL
-          AND a.company_id <> ${companyAId}::uuid
-          AND a.start_date IS NOT NULL
-          AND b.start_date IS NOT NULL
-          AND GREATEST(a.start_date, b.start_date)
-              <= LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE))
-          AND (
-            LEAST(COALESCE(a.end_date, CURRENT_DATE), COALESCE(b.end_date, CURRENT_DATE))
-            - GREATEST(a.start_date, b.start_date)
-          ) >= ${minOverlapDays}
-          ${
-            companyBPattern
-              ? sql`AND (
-                c.normalized_name ILIKE ${companyBPattern} ESCAPE '\\'
-                OR coalesce(c.normalized_domain, '') ILIKE ${companyBPattern} ESCAPE '\\'
-                OR EXISTS (
-                  SELECT 1 FROM company_aliases ca
-                  WHERE ca.company_id = c.id
-                    AND ca.normalized_value ILIKE ${companyBPattern} ESCAPE '\\'
-                )
-              )`
-              : sql``
-          }
-        ORDER BY overlap_days DESC, person_a_id, person_b_id, company_id
-        LIMIT ${MAX_NATURAL_SEARCH_RESULTS}
-      `);
-
-      const rows = Array.isArray(overlapRows)
-        ? overlapRows
-        : ((overlapRows as { rows?: Array<Record<string, unknown>> }).rows ?? []);
-
-      for (const row of rows as Array<Record<string, unknown>>) {
-        results.push({
-          personA: { id: String(row.person_a_id), name: String(row.person_a_name ?? "Unknown") },
-          personB: { id: String(row.person_b_id), name: String(row.person_b_name ?? "Unknown") },
-          company: { id: String(row.company_id), name: String(row.company_name ?? "Unknown") },
-          overlapStart: row.overlap_start ? String(row.overlap_start).slice(0, 10) : null,
-          overlapEnd: row.overlap_end ? String(row.overlap_end).slice(0, 10) : null,
-          overlapDays: Number(row.overlap_days ?? 0),
-        });
-      }
-    }
-
-    const deduped = [
-      ...new Map(
-        results.map((item) => [`${item.personA.id}:${item.personB.id}:${item.company.id}`, item]),
-      ).values(),
-    ];
-    return deduped.slice(0, MAX_NATURAL_SEARCH_RESULTS);
+  const companyIds = await resolveCompanyIdsByQuery(db, intent.companyA, {
+    runId: options.runId,
+    userId,
   });
+  if (companyIds.length === 0) {
+    return [];
+  }
+
+  const ownedCompanyIds: string[] = [];
+  for (const companyId of companyIds) {
+    if (await userOwnsCompany(db, companyId, userId)) {
+      ownedCompanyIds.push(companyId);
+    }
+  }
+  if (ownedCompanyIds.length === 0) {
+    return [];
+  }
+
+  const discovered = await potentialConnectionsService.listForUser(userId, {
+    minOverlapDays,
+    includeLimited: true,
+    limit: MAX_NATURAL_SEARCH_RESULTS * 4,
+  });
+
+  const companyBNeedle = intent.companyB?.trim().toLowerCase() ?? null;
+  const personNeedle = intent.personName?.trim().toLowerCase() ?? null;
+  const personMatches = new Map<string, string>();
+
+  const mapped = discovered.items
+    .filter((item) => {
+      const involvesCompanyA =
+        ownedCompanyIds.includes(item.personA.currentCompanyId) ||
+        ownedCompanyIds.includes(item.personB.currentCompanyId) ||
+        (item.sharedEmployer.companyId != null &&
+          ownedCompanyIds.includes(item.sharedEmployer.companyId));
+      if (!involvesCompanyA) {
+        return false;
+      }
+
+      if (companyBNeedle) {
+        const haystack = [
+          item.sharedEmployer.name,
+          item.sharedEmployer.domain,
+          item.sharedEmployer.key,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(companyBNeedle)) {
+          return false;
+        }
+      }
+
+      if (personNeedle) {
+        const names = [item.personA.personName, item.personB.personName].map((name) =>
+          name.toLowerCase(),
+        );
+        const matched = names.filter((name) => name.includes(personNeedle));
+        if (matched.length === 0) {
+          return false;
+        }
+        for (const person of [item.personA, item.personB]) {
+          if (person.personName.toLowerCase().includes(personNeedle)) {
+            personMatches.set(person.personId, person.personName);
+          }
+        }
+      }
+
+      return true;
+    })
+    .map((item) => {
+      const starts = item.roleSegments
+        .map((segment) => segment.startDate)
+        .filter((value): value is string => Boolean(value))
+        .sort();
+      const ends = item.roleSegments
+        .map((segment) => segment.endDate)
+        .filter((value): value is string => Boolean(value))
+        .sort();
+      return {
+        personA: { id: item.personA.personId, name: item.personA.personName },
+        personB: { id: item.personB.personId, name: item.personB.personName },
+        company: {
+          id: item.sharedEmployer.companyId ?? item.personA.currentCompanyId,
+          name: item.sharedEmployer.name,
+        },
+        overlapStart: starts[0] ?? null,
+        overlapEnd: ends.at(-1) ?? null,
+        overlapDays: item.overlapDays,
+      };
+    });
+
+  if (personNeedle && personMatches.size > 1) {
+    throw new NaturalSearchError("AMBIGUOUS_PERSON", "Multiple people matched that name", {
+      matches: [...personMatches.entries()].map(([id, name]) => ({ id, name })),
+    });
+  }
+
+  const deduped = [
+    ...new Map(
+      mapped.map((item) => [`${item.personA.id}:${item.personB.id}:${item.company.id}`, item]),
+    ).values(),
+  ];
+  return deduped.slice(0, MAX_NATURAL_SEARCH_RESULTS);
 }
 
 export function sanitizeSearchIntent(intent: SearchIntent): SearchIntent {

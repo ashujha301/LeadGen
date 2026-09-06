@@ -91,6 +91,17 @@ export {
 } from "./graph";
 
 export {
+  potentialConnectionsQuerySchema,
+  potentialConnectionItemSchema,
+  potentialConnectionsResponseSchema,
+  strengthBandSchema,
+  evidenceQualitySchema,
+  type PotentialConnectionsQuery,
+  type PotentialConnectionItem,
+  type PotentialConnectionsResponse,
+} from "./potential-connections";
+
+export {
   observationSchema,
   pageExtractionSchema,
   normalizePageExtraction,

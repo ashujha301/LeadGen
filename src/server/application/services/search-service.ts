@@ -6,14 +6,8 @@ import type {
 import { NaturalSearchError } from "@/server/application/search/natural-search-error";
 import { runNaturalSearchV2 } from "@/server/application/search/natural-search-v2";
 import { resolveNaturalSearchSession } from "@/server/application/search/resolve-session";
-import { findEmploymentOverlaps } from "@/server/domain";
-import {
-  getDb,
-  listOwnedPersonIdsForCompany,
-  runsRepo,
-  userOwnsCompany,
-  userOwnsPerson,
-} from "@/server/infrastructure/db";
+import { potentialConnectionsService } from "@/server/application/services/potential-connections-service";
+import { getDb, runsRepo, userOwnsCompany, userOwnsPerson } from "@/server/infrastructure/db";
 
 export const searchService = {
   async naturalSearch(
@@ -60,11 +54,48 @@ export const searchService = {
       return [];
     }
 
-    const ownedPersonIds = await listOwnedPersonIdsForCompany(db, params.companyId, userId);
-
-    return findEmploymentOverlaps(db, {
-      ...params,
-      ownedPersonIds,
+    const discovered = await potentialConnectionsService.listForUser(userId, {
+      minOverlapDays: params.minOverlapDays,
+      includeLimited: true,
+      limit: 200,
     });
+
+    return discovered.items
+      .filter((item) => {
+        const involvesCurrentCompany =
+          item.personA.currentCompanyId === params.companyId ||
+          item.personB.currentCompanyId === params.companyId;
+        const involvesSharedEmployer = item.sharedEmployer.companyId === params.companyId;
+        if (!involvesCurrentCompany && !involvesSharedEmployer) {
+          return false;
+        }
+        if (!params.personId) {
+          return true;
+        }
+        return (
+          item.personA.personId === params.personId || item.personB.personId === params.personId
+        );
+      })
+      .map((item) => {
+        const starts = item.roleSegments
+          .map((segment) => segment.startDate)
+          .filter((value): value is string => Boolean(value))
+          .sort();
+        const ends = item.roleSegments
+          .map((segment) => segment.endDate)
+          .filter((value): value is string => Boolean(value))
+          .sort();
+        return {
+          personA: { id: item.personA.personId, name: item.personA.personName },
+          personB: { id: item.personB.personId, name: item.personB.personName },
+          company: {
+            id: item.sharedEmployer.companyId ?? params.companyId,
+            name: item.sharedEmployer.name,
+          },
+          overlapStart: starts[0] ?? null,
+          overlapEnd: ends.at(-1) ?? null,
+          overlapDays: item.overlapDays,
+        };
+      });
   },
 };

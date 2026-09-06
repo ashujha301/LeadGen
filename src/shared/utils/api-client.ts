@@ -7,6 +7,7 @@ import type {
   LeadSummary,
   OverlapResult,
   PersonDetail,
+  PotentialConnectionsResponse,
   RoleCriteria,
   RunResponse,
 } from "@/shared/contracts";
@@ -148,6 +149,26 @@ export const apiClient = {
       body: JSON.stringify(body),
     });
     return (await parseResponse<NaturalSearchV2Response>(res)).data;
+  },
+
+  async listPotentialConnections(params?: {
+    currentCompanyId?: string;
+    sharedEmployer?: string;
+    strengthBand?: "strong" | "moderate" | "weak";
+    minOverlapDays?: number;
+    includeLimited?: boolean;
+    limit?: number;
+  }) {
+    const search = new URLSearchParams();
+    if (params?.currentCompanyId) search.set("currentCompanyId", params.currentCompanyId);
+    if (params?.sharedEmployer) search.set("sharedEmployer", params.sharedEmployer);
+    if (params?.strengthBand) search.set("strengthBand", params.strengthBand);
+    if (params?.minOverlapDays != null) search.set("minOverlapDays", String(params.minOverlapDays));
+    if (params?.includeLimited != null) search.set("includeLimited", String(params.includeLimited));
+    if (params?.limit != null) search.set("limit", String(params.limit));
+    const query = search.toString();
+    const res = await fetch(`${API_BASE}/v1/connections${query ? `?${query}` : ""}`);
+    return (await parseResponse<PotentialConnectionsResponse>(res)).data;
   },
 
   async findOverlaps(params: { companyId: string; personId?: string; minOverlapDays?: number }) {

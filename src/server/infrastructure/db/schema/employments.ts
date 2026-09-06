@@ -29,6 +29,7 @@ export const employments = pgTable(
     employerDomain: text("employer_domain"),
     employerProfessionalNetworkUrl: text("employer_professional_network_url"),
     providerEmploymentId: text("provider_employment_id"),
+    providerCompanyId: text("provider_company_id"),
     providerFingerprint: text("provider_fingerprint"),
     providerUpdatedAt: timestamp("provider_updated_at", { withTimezone: true, mode: "date" }),
     rawTitle: text("raw_title"),
@@ -66,6 +67,9 @@ export const employments = pgTable(
     uniqueIndex("employments_person_provider_fingerprint_uidx")
       .on(table.personId, table.providerFingerprint)
       .where(sql`${table.providerFingerprint} is not null`),
+    index("employments_employer_domain_idx").on(table.employerDomain),
+    index("employments_provider_company_id_idx").on(table.providerCompanyId),
+    index("employments_person_start_date_idx").on(table.personId, table.startDate),
   ],
 );
 

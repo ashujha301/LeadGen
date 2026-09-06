@@ -50,6 +50,7 @@ export async function upsertPersonEnrichmentRun(
       set: {
         enrichmentStatus: input.enrichmentStatus,
         providerExperienceYears: input.providerExperienceYears,
+        providerMatchConfidence: input.providerMatchConfidence,
         sourceDocumentId: input.sourceDocumentId,
         fetchedAt: input.fetchedAt ?? new Date(),
         updatedAt: new Date(),
